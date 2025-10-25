@@ -1,24 +1,27 @@
-// mod thread;
+// mod mythread;
 // mod types;
-mod mutex;
+mod mymutex;
+mod deadlocktest;
 
 use std::thread;
 use std::sync::Arc;
+use mymutex::MyMutex;
 
 fn main() {
-    let lock = Arc::new(mutex::Mutex::new());
-    let mut handles = vec![];
+    deadlocktest::test();
+    // let lock = Arc::new(MyMutex::new());
+    // let mut handles = vec![];
 
-    for i in 0..5 {
-        let l = lock.clone();
-        handles.push(thread::spawn(move || {
-            l.lock();
-            println!("Thread {i} inside");
-            l.unlock();
-        }));
-    }
+    // for i in 0..5 {
+    //     let l = lock.clone();
+    //     handles.push(thread::spawn(move || {
+    //         l.lock();
+    //         println!("Thread {i} inside");
+    //         l.unlock();
+    //     }));
+    // }
 
-    for h in handles {
-        h.join().unwrap();
-    }
+    // for h in handles {
+    //     h.join().unwrap();
+    // }
 }
