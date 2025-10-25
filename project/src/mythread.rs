@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 
 static ID_COUNTER: AtomicI32 = AtomicI32::new(1);
 
-pub struct Thread { // Add more attributes as needed, this file is just a brainstorm.
+pub struct MyThread { // Add more attributes as needed, this file is just a brainstorm.
     id: i32,
     state: State,
     args: HashMap<String, Box<dyn Any>>,
@@ -14,7 +14,7 @@ pub struct Thread { // Add more attributes as needed, this file is just a brains
     stack: Vec<Box<dyn Any>>
 }
 
-impl Thread {
+impl MyThread {
     pub fn new() -> Self {
         Self {
             id: ID_COUNTER.fetch_add(1, Ordering::SeqCst),
