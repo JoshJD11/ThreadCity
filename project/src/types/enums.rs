@@ -4,3 +4,10 @@ pub enum State {
     Running,
     Blocked
 }
+
+#[derive(Debug, Clone, Copy)]
+pub enum SchedulingAlgorithm {
+    Round_Robin,
+    Real_Time,
+    Lottery
+}
