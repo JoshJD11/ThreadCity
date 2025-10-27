@@ -1,5 +1,5 @@
-use crate::types;
-use types::enums::State;
+use crate::types::enums::State;
+use crate::threadcontext::ThreadContext;
 use std::collections::HashMap;
 use std::any::Any;
 use std::sync::atomic::{AtomicI32, Ordering};
@@ -11,7 +11,8 @@ pub struct MyThread { // Add more attributes as needed, this file is just a brai
     state: State,
     args: HashMap<String, Box<dyn Any>>,
     function: Option<fn(HashMap<String, Box<dyn Any>>) -> Box<dyn Any>>,
-    stack: Vec<Box<dyn Any>>
+    stack: Vec<Box<dyn Any>>,
+    
 }
 
 impl MyThread {
@@ -23,10 +24,6 @@ impl MyThread {
             function: None,
             stack: Vec::new()
         }
-    }
-
-    pub fn test_function(&self) -> i32 {
-        self.id
     }
 
 }

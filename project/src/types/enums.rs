@@ -2,7 +2,8 @@
 pub enum State {
     Ready,
     Running,
-    Blocked
+    Blocked,
+    Terminated
 }
 
 #[derive(Debug, Clone, Copy)]
