@@ -8,7 +8,7 @@ pub enum State {
 
 #[derive(Debug, Clone, Copy)]
 pub enum SchedulingAlgorithm {
-    Round_Robin,
-    Real_Time,
+    RoundRobin,
+    RealTime,
     Lottery
 }

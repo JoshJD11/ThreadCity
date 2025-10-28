@@ -1,17 +1,17 @@
 #[repr(C)]
 #[derive(Default)]
-struct ThreadContext {
-    rsp: usize,
-    rbx: usize,
-    rbp: usize,
-    r12: usize,
-    r13: usize,
-    r14: usize,
-    r15: usize
+pub struct ThreadContext {
+    pub rsp: usize,
+    pub rbx: usize,
+    pub rbp: usize,
+    pub r12: usize,
+    pub r13: usize,
+    pub r14: usize,
+    pub r15: usize
 }
 
 impl ThreadContext {
-    fn new() -> Self {
+    pub fn new() -> Self {
         ThreadContext::default()
     }
 }
