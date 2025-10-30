@@ -26,10 +26,10 @@ fn main() {
     let mut sched = Scheduler::new();
 
     let t1 = MyThread::new(hilo1);
-    let t2 = MyThread::new(hilo2);
+    // let t2 = MyThread::new(hilo2);
 
     sched.add_thread(t1);
-    sched.add_thread(t2);
+    // sched.add_thread(t2);
 
     unsafe {
         sched.run();

@@ -37,6 +37,7 @@ impl Scheduler {
         }
     }
 
+
     pub fn add_thread(&mut self, thread: MyThread) {
         self.ready_queue.push_back(thread);
     }

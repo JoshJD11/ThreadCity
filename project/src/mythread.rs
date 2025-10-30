@@ -1,23 +1,24 @@
-// use crate::types::enums::State;
 use crate::threadcontext::ThreadContext;
-// use std::collections::HashMap;
-// use std::any::Any;
-// use std::sync::atomic::{AtomicI32, Ordering};
 use libc::{mmap, MAP_ANON, MAP_PRIVATE, PROT_READ, PROT_WRITE};
 use std::ptr;
+use crate::types::enums::State;
 
-// static ID_COUNTER: AtomicI32 = AtomicI32::new(1);
 const STACK_SIZE: usize = 1024 * 1024; // 1 MB stack size
 
 pub struct MyThread { 
     pub stack: *mut u8,
     pub func: Option<fn()>,
-    pub ctx: ThreadContext
+    pub ctx: ThreadContext,
+    pub state: State
+    
 }
 
-extern "C" fn thread_start(func: fn()) {
-    func();
-    // Here we can notify the scheduler that the thread has finished
+extern "C" fn thread_exit() {
+    // Aquí deberías notificar al scheduler que el hilo terminó.
+    // Por ahora evitamos comportamiento indefinido; cerramos el proceso.
+    // (En producción, llamarías al scheduler para remover el hilo y volver.)
+    // self.state = State::Terminated;
+    unsafe { libc::exit(0) };
 }
 
 impl MyThread {
@@ -36,10 +37,13 @@ impl MyThread {
             let stack_top = stack.add(STACK_SIZE);
 
             let func_ptr = func as usize;
+            let exit_ptr = thread_exit as usize;
 
             let stack_top_aligned = (stack_top as usize & !0xF) as *mut usize;
             let sp = stack_top_aligned.sub(2);
-            *sp.add(1) = func_ptr;
+
+            *sp = func_ptr;
+            *sp.add(1) = exit_ptr;
 
             ctx.rsp = sp as usize;
             ctx.rbp = 0;
@@ -47,7 +51,8 @@ impl MyThread {
             Self {
                 stack,
                 func: Some(func),
-                ctx
+                ctx,
+                state: State::Ready
             }
         }
     }
