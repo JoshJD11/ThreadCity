@@ -13,15 +13,14 @@ pub struct MyThread {
     
 }
 
-extern "C" fn thread_exit() {
-    // Aquí deberías notificar al scheduler que el hilo terminó.
-    // Por ahora evitamos comportamiento indefinido; cerramos el proceso.
-    // (En producción, llamarías al scheduler para remover el hilo y volver.)
-    // self.state = State::Terminated;
-    unsafe { libc::exit(0) };
-}
 
 impl MyThread {
+
+    pub fn thread_exit(&mut self) {
+        self.state = State::Terminated;
+        // unsafe { libc::exit(0) }; // Colocar extern "C" en caso de usarse
+    }
+
     pub fn new(func: fn()) -> Self {
         unsafe {
             let stack = mmap(
@@ -37,7 +36,7 @@ impl MyThread {
             let stack_top = stack.add(STACK_SIZE);
 
             let func_ptr = func as usize;
-            let exit_ptr = thread_exit as usize;
+            let exit_ptr = MyThread::thread_exit as usize;
 
             let stack_top_aligned = (stack_top as usize & !0xF) as *mut usize;
             let sp = stack_top_aligned.sub(2);
