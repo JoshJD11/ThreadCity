@@ -99,13 +99,4 @@ impl Scheduler {
             self.ready_queue.push_back(old_thread);
         }
     }
-    
-    
-    pub unsafe fn run(&mut self) {
-        while !self.ready_queue.is_empty() || self.current_thread.is_some() {
-           
-            self.yield_thread();
-
-        }
-    }
 }
