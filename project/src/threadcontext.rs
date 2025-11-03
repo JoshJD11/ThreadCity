@@ -1,5 +1,5 @@
 #[repr(C)]
-#[derive(Default)]
+#[derive(Default, Copy, Clone)]
 pub struct ThreadContext {
     pub rsp: usize,
     pub rbx: usize,
