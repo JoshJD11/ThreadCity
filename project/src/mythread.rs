@@ -7,7 +7,7 @@ use crate::threadmanager::ThreadManager;
 use crate::scheduler::{Scheduler, ROUND_ROBIN_SCHEDULER};
 
 const STACK_SIZE: usize = 1024 * 1024; // 1 MB stack size
-static ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
+pub static ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Copy, Clone)]
 pub struct MyThread { 
@@ -16,8 +16,11 @@ pub struct MyThread {
     pub func: Option<fn()>,
     pub ctx: ThreadContext,
     pub state: State
-    
 }
+
+// Explicitly implement Send and Sync for MyThread since we know our usage of raw pointers is thread-safe
+unsafe impl Send for MyThread {}
+unsafe impl Sync for MyThread {}
 
 pub unsafe fn thread_exit(thread: *mut MyThread) {
     unsafe {
@@ -91,14 +94,23 @@ impl MyThread {
             (*thread).ctx.rbp = 0;
             (*thread).func = Some(func);
 
-            // recibe
-    // fn add_thread(&self, thread: Arc<Mutex<MyThread>>) {
-    //     self.ready_queue.lock().unwrap().push_back(thread);
-    // }
 
-        ROUND_ROBIN_SCHEDULER.add_thread(std::sync::Arc::new(std::sync::Mutex::new(*thread)));
-        // Temporal
-        ThreadManager::schedule_next();
+    // Register the new thread with the scheduler. We create an Arc<Mutex<MyThread>>
+    // from a copy of the thread struct here; to avoid double-free issues later you
+    // may prefer to allocate the MyThread on the heap and move it into the Arc.
+    ROUND_ROBIN_SCHEDULER.add_thread(std::sync::Arc::new(std::sync::Mutex::new(*thread)));
+        }
+    }
+
+    // Create a MyThread that represents the current/main context.
+    // `stack` may be null for main (we don't own the stack memory).
+    pub fn from_existing_ctx(id: usize, ctx: ThreadContext) -> Self {
+        Self {
+            id,
+            stack: core::ptr::null_mut(),
+            func: None,
+            ctx,
+            state: State::Ready,
         }
     }
 

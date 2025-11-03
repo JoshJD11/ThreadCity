@@ -6,17 +6,17 @@ use core::sync::atomic::{AtomicPtr, Ordering};
 use core::arch::asm;
 use lazy_static::lazy_static;
 use std::sync::{Arc, Mutex};
+use crate::mythread::ID_COUNTER; // or provide a function to allocate ids
+use libc;
 
 pub struct ThreadManager {
     current_thread: AtomicPtr<MyThread>,
-    scheduler: &'static dyn Scheduler,
 }
 
 impl ThreadManager {
     pub fn new(scheduler: &'static dyn Scheduler) -> Self {
         Self {
             current_thread: AtomicPtr::new(core::ptr::null_mut()),
-            scheduler,
         }
     }
     
@@ -42,6 +42,7 @@ impl ThreadManager {
     }
 
     pub unsafe fn schedule_next() -> ! {
+        // println!("ThreadManager: scheduling next thread...");
         // 1. Guardar contexto del thread actual (si existe)
         let current = Self::get_current_thread_ptr();
 
@@ -70,6 +71,7 @@ impl ThreadManager {
 
             unsafe {
                 // 4. Cambiar al contexto del nuevo thread
+                // println!("ThreadManager: switching to thread ID {}", guard.id);
                 Self::switch_context(old_ctx_ptr, new_ctx_ptr);
             }
 
@@ -80,8 +82,10 @@ impl ThreadManager {
         }
         
         // Nunca retorna desde aquí
-        loop {
-            core::hint::spin_loop();
+        println!("ThreadManager: no more threads to schedule, exiting.");
+        // SAFETY: libc::exit is unsafe because it terminates the process immediately
+        unsafe {
+            libc::exit(0);
         }
     }
     
@@ -98,22 +102,46 @@ impl ThreadManager {
         CURRENT_MANAGER.current_thread.store(thread, Ordering::Release);
     }
     
-    fn save_current_context() {
-        // Guardar los registros del thread actual en su estructura
-        // Esto se haría en assembly antes del context switch
-    }
-    
+    // fn save_current_context is removed as it's not used
     fn switch_to_main_thread() -> ! {
-        // Volver al thread principal del sistema
         println!("Volviendo al main thread");
+        
+        // Try to get main thread from our storage first
+        if let Some(main_arc) = MAIN_THREAD_STORE.lock().unwrap().as_ref() {
+            println!("Found main thread in storage, switching to it.");
+            let guard = main_arc.lock().unwrap();
+            let ctx_ptr = &guard.ctx as *const ThreadContext;
+            
+            // Create a dummy context to save current state (won't be used)
+            let mut dummy_ctx = ThreadContext::new();
+            let dummy_ptr = &mut dummy_ctx as *mut ThreadContext;
+            
+            unsafe {
+                // Switch to main's saved context
+                Self::switch_context(dummy_ptr, ctx_ptr);
+            }
+        }
+
+        // As fallback, find main thread in scheduler (it should be the thread with ID 0)
+        else if let Some(main_arc) = ROUND_ROBIN_SCHEDULER.get_next_thread() {
+            println!("Found main thread in scheduler, switching to it.");
+            let guard = main_arc.lock().unwrap();
+            let ctx_ptr = &guard.ctx as *const ThreadContext;
+            
+            // Create a dummy context to save current state (won't be used)
+            let mut dummy_ctx = ThreadContext::new();
+            let dummy_ptr = &mut dummy_ctx as *mut ThreadContext;
+            
+            unsafe {
+                // Switch to main's saved context
+                Self::switch_context(dummy_ptr, ctx_ptr);
+            }
+        }
+        
+        // If we couldn't find main thread, exit cleanly
+        println!("Error: couldn't find main thread in storage or scheduler!");
         unsafe {
-            asm!(
-                "mov rsp, {0}",
-                "jmp {1}",
-                in(reg) MAIN_STACK_TOP,
-                in(reg) MAIN_ENTRY_POINT,
-                options(noreturn)
-            );
+            libc::exit(1);
         }
     }
 }
@@ -123,31 +151,61 @@ lazy_static! {
     pub static ref CURRENT_MANAGER: ThreadManager = ThreadManager::new(&*crate::scheduler::ROUND_ROBIN_SCHEDULER as &'static dyn Scheduler);
 }
 
-// Main thread context (captured on initialization)
-pub static mut MAIN_STACK_TOP: usize = 0;
-pub static mut MAIN_ENTRY_POINT: usize = 0;
+// Single module-level store for the main thread so capture and switch both use the same storage
+lazy_static! {
+    static ref MAIN_THREAD_STORE: Mutex<Option<Arc<Mutex<MyThread>>>> = Mutex::new(None);
+}
 
-// Initialize main thread context (call this at start of main)
-pub unsafe fn init_main_context() {
+
+// Capture the current registers into `ctx` using the same layout used by switch_context.
+// SAFETY: this writes CPU registers into memory at ctx; call only when you intend to capture
+// the current execution state (e.g., at program startup to snapshot main).
+pub unsafe fn capture_current_context(ctx: &mut ThreadContext) {
+    let ptr = ctx as *mut ThreadContext;
+    // Inline assembly is considered an unsafe operation even inside an unsafe fn under Rust 2024,
+    // so wrap the asm! invocation in an explicit inner unsafe block.
     unsafe {
-        let mut rsp: usize;
-        let mut rip: usize;
         core::arch::asm!(
-            // Store current stack and instruction pointers
-            "mov {0}, rsp",           // Get current stack pointer
-            "lea {1}, [rip + {label}]", // Get address of our label
-            out(reg) rsp,             // Output: stack pointer
-            out(reg) rip,             // Output: instruction pointer
-            label = sym return_point,  // Define our symbol
-            options(nomem, nostack)    // Don't modify memory or stack
+            // write current registers into the ThreadContext fields:
+            "mov [rdi + 0x00], rsp",
+            "mov [rdi + 0x08], rbx",
+            "mov [rdi + 0x10], rbp",
+            "mov [rdi + 0x18], r12",
+            "mov [rdi + 0x20], r13",
+            "mov [rdi + 0x28], r14",
+            "mov [rdi + 0x30], r15",
+            in("rdi") ptr,
+            options(nostack)
         );
-        MAIN_STACK_TOP = rsp;
-        MAIN_ENTRY_POINT = rip;
     }
 }
 
-#[unsafe(no_mangle)]
-unsafe extern "C" fn return_point() {
-    // Just a marker - we return here from threads
-    // No body needed as we just use the function address
+pub fn capture_main_as_thread_and_register() {
+    // capture registers
+    let mut main_ctx = ThreadContext::new();
+    unsafe { capture_current_context(&mut main_ctx) };
+
+    // create a MyThread that wraps that context
+    let id = ID_COUNTER.fetch_add(1, Ordering::SeqCst);
+    let main_thread = MyThread::from_existing_ctx(id, main_ctx);
+
+    // wrap and push to scheduler
+    let arc = Arc::new(Mutex::new(main_thread));
+    // Lock briefly to get a stable pointer to the heap allocation
+    let guard = arc.lock().unwrap();
+    let ptr: *mut MyThread = &*guard as *const MyThread as *mut MyThread;
+    
+    // Add to scheduler first
+    // ROUND_ROBIN_SCHEDULER.add_thread(arc.clone());
+    
+    // Set current thread so first schedule call saves live context
+    CURRENT_MANAGER.current_thread.store(ptr, Ordering::Release);
+    drop(guard);
+    
+    // Store main thread reference in ThreadManager
+    // Note: CURRENT_MANAGER is not mutable directly, but we can work around this
+    // by defining a new static that uses interior mutability with a Mutex.
+    *MAIN_THREAD_STORE.lock().unwrap() = Some(arc);
 }
+
+
