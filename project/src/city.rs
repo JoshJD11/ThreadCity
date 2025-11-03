@@ -1,9 +1,7 @@
 // Topological model of the city as a grid graph
 //   - N×N blocks -> (N+1)×(N+1) intersection (nodes)
 
-pub type Node = (usize, usize);
-
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StreetId {
     Horizontal { row: usize, column: usize },
     Vertical { row: usize, column: usize },
@@ -19,15 +17,13 @@ impl StreetId {
     }
 }
 
-// intersections are the nodes
-// streets are the edges
-pub struct CityGraph {
+pub struct City {
     size: usize,
 }
 
-impl CityGraph {
+impl City {
     pub fn new(size: usize) -> Self {
-        assert!(size > 0, "CityGraph::new: n must be > 0");
+        assert!(size > 0, "City::new: n must be > 0");
         Self { size }
     }
 
