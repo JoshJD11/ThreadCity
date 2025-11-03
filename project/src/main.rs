@@ -31,7 +31,7 @@ fn hilo3() {
 }
 
 fn main() {
-    let mut sched = Scheduler::new();
+    // let mut sched = Scheduler::new();
 
     // let t1 = MyThread::new(hilo1);
     // let t2 = MyThread::new(hilo2);
