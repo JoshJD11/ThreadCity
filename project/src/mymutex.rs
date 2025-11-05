@@ -11,7 +11,7 @@ impl MyMutex {
             state: AtomicI32::new(0)
         }
     }
-
+.
     pub fn try_lock(&self) -> bool {
         self.state.compare_exchange(0, 1, Ordering::Acquire, Ordering::Relaxed).is_ok()
     }
