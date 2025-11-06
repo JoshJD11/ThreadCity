@@ -1,13 +1,11 @@
 use std::collections::VecDeque;
 use crate::mythread::MyThread;
 
-
 pub struct RoundRobinScheduler {
     ready_queue: VecDeque<MyThread>,
 }
 
 impl RoundRobinScheduler {
-
     pub fn new() -> Self {
         Self {
             ready_queue: VecDeque::new(),
@@ -19,18 +17,24 @@ impl RoundRobinScheduler {
     }
 
     pub fn run(&mut self) {
-
         const THE_NUMBER_OF_THE_BEAST: usize = 666;
 
         while let Some(mut t) = self.ready_queue.pop_front() {
             unsafe {
-                t.ctx = t.ctx.context.resume(0);
+                if let Some(ctx) = t.ctx.take() { 
+                    let new_ctx = ctx.context.resume(0);
+                    t.ctx = Some(new_ctx);
+                }
             }
-            if t.ctx.data != THE_NUMBER_OF_THE_BEAST {
+            
+            if let Some(ctx) = &t.ctx {
+                if ctx.data != THE_NUMBER_OF_THE_BEAST {
+                    self.ready_queue.push_back(t);
+                }
+            } else {
                 self.ready_queue.push_back(t);
             }
         }
         println!("Too ezz");
     }
-
 }

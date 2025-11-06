@@ -1,8 +1,10 @@
 mod mythread;
-mod scheduler;
+mod roundrobinscheduler;
+mod ticketscheduler;
 
 use mythread::MyThread;
-use scheduler::RoundRobinScheduler;
+use roundrobinscheduler::RoundRobinScheduler;
+// use ticketscheduler::TicketScheduler;
 use context::Transfer;
 
 
@@ -23,9 +25,11 @@ fn main() {
     let mut sched = RoundRobinScheduler::new();
     let thread1 = MyThread::new(context_function);
     let thread2 = MyThread::new(context_function);
+    let thread3 = MyThread::new(context_function);
 
     sched.enqueue_process(thread1);
     sched.enqueue_process(thread2);
+    sched.enqueue_process(thread3);
 
     sched.run();
     

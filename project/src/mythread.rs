@@ -4,7 +4,7 @@ use context::{Context, Transfer};
 
 
 pub struct MyThread { 
-    pub ctx: Transfer,
+    pub ctx: Option<Transfer>,
     _stack: ProtectedFixedSizeStack,
 }
 
@@ -14,7 +14,7 @@ impl MyThread {
     pub fn new(func: extern "C" fn(Transfer) -> !) -> Self {
         let stack = ProtectedFixedSizeStack::default();
         Self {
-            ctx: Transfer::new(unsafe { Context::new(&stack, func) }, 0),
+            ctx: Some(Transfer::new(unsafe { Context::new(&stack, func) }, 0)),
             _stack: stack
         }
     }
