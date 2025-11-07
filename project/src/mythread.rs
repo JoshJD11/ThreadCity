@@ -6,6 +6,7 @@ use context::{Context, Transfer};
 pub struct MyThread { 
     pub ctx: Option<Transfer>,
     _stack: ProtectedFixedSizeStack,
+    pub tickets: usize
 }
 
 
@@ -15,7 +16,13 @@ impl MyThread {
         let stack = ProtectedFixedSizeStack::default();
         Self {
             ctx: Some(Transfer::new(unsafe { Context::new(&stack, func) }, 0)),
-            _stack: stack
+            _stack: stack,
+            tickets: 0
         }
     }
+
+    pub fn add_tickets(&mut self, tickets: usize) {
+        self.tickets += tickets;
+    }
+
 }
