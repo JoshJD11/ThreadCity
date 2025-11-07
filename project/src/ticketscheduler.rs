@@ -26,7 +26,7 @@ impl TicketScheduler {
         let win_condition = rng.gen_range(1..=self.total_tickets);
         let mut counter = 0;
         for i in 0..self.ready_queue.len() {
-            counter += self.ready_queue[i].tickets;
+            counter += self.ready_queue[i].get_tickets();
             if counter >= win_condition {
                 self.current_index = i;
                 return self.ready_queue.get_mut(i);
@@ -36,11 +36,10 @@ impl TicketScheduler {
     }
 }
 
-
 impl Scheduler for TicketScheduler {
 
-    fn enqueue_process(&mut self, thread: MyThread) {
-        self.total_tickets += thread.tickets;
+    fn enqueue_process(&mut self, mut thread: MyThread) {
+        self.total_tickets += thread.get_tickets();
         self.ready_queue.push(thread);
     }
 
@@ -56,7 +55,7 @@ impl Scheduler for TicketScheduler {
             }
             if let Some(ctx) = &t.ctx {
                 if ctx.data == THE_NUMBER_OF_THE_BEAST {
-                    self.total_tickets -= self.ready_queue[self.current_index].tickets;
+                    self.total_tickets -= self.ready_queue[self.current_index].get_tickets();
                     self.ready_queue.remove(self.current_index);
                 }
             }

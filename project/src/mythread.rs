@@ -1,12 +1,14 @@
 extern crate context;
 use context::stack::ProtectedFixedSizeStack;
 use context::{Context, Transfer};
+use std::cmp::Ordering;
 
 
 pub struct MyThread { 
     pub ctx: Option<Transfer>,
     _stack: ProtectedFixedSizeStack,
-    pub tickets: usize
+    tickets: usize,
+    deadline: usize,
 }
 
 
@@ -17,7 +19,8 @@ impl MyThread {
         Self {
             ctx: Some(Transfer::new(unsafe { Context::new(&stack, func) }, 0)),
             _stack: stack,
-            tickets: 0
+            tickets: 0,
+            deadline: 0,
         }
     }
 
@@ -25,4 +28,37 @@ impl MyThread {
         self.tickets += tickets;
     }
 
+    pub fn get_tickets(&mut self) -> usize {
+        return self.tickets;
+    }
+
+    pub fn set_deadline(&mut self, deadline: usize) {
+        self.deadline = deadline;
+    }
+
+    pub fn get_deadline(&mut self) -> usize {
+        return self.deadline;
+    }
+
 }
+
+impl PartialEq for MyThread {
+    fn eq(&self, other: &Self) -> bool {
+        self.deadline == other.deadline
+    }
+}
+
+impl Eq for MyThread {}
+
+impl PartialOrd for MyThread {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for MyThread {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.deadline.cmp(&self.deadline)
+    }
+}
+

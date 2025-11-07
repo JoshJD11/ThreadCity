@@ -3,12 +3,14 @@ mod roundrobinscheduler;
 mod ticketscheduler;
 mod timer;
 mod scheduler;
+mod realtimescheduler;
 
 use mythread::MyThread;
 use scheduler::Scheduler;
 use roundrobinscheduler::RoundRobinScheduler;
 use ticketscheduler::TicketScheduler;
 use context::Transfer;
+use realtimescheduler::RealTimeScheduler;
 
 
 
@@ -57,14 +59,17 @@ fn main() {
         }
         unreachable!();
     }
-    let mut sched: Box<dyn Scheduler> = Box::new(TicketScheduler::new());
+    let mut sched: Box<dyn Scheduler> = Box::new(RealTimeScheduler::new());
 
     let mut thread1 = MyThread::new(context_function1);
-    thread1.add_tickets(25);
+    thread1.set_deadline(10);
+    // thread1.add_tickets(25);
     let mut thread2 = MyThread::new(context_function2);
-    thread2.add_tickets(20);
+    thread2.set_deadline(15);
+    // thread2.add_tickets(20);
     let mut thread3 = MyThread::new(context_function3);
-    thread3.add_tickets(30);
+    thread3.set_deadline(5);
+    // thread3.add_tickets(30);
 
     sched.enqueue_process(thread1);
     sched.enqueue_process(thread2);
