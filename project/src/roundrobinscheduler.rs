@@ -1,6 +1,18 @@
 use std::collections::VecDeque;
 use crate::mythread::MyThread;
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static PREEMPT: AtomicBool = AtomicBool::new(false);
+
+pub fn preempt_flag() {
+    PREEMPT.store(true, Ordering::SeqCst);
+}
+
+pub fn should_preempt() -> bool {
+    PREEMPT.swap(false, Ordering::SeqCst)
+}
+
 pub struct RoundRobinScheduler {
     ready_queue: VecDeque<MyThread>,
 }
