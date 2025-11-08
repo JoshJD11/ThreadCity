@@ -2,9 +2,14 @@ extern crate context;
 use context::stack::ProtectedFixedSizeStack;
 use context::{Context, Transfer};
 use std::cmp::Ordering;
+use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
+
+
+static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 
 
 pub struct MyThread { 
+    pub id: usize,
     pub ctx: Option<Transfer>,
     _stack: ProtectedFixedSizeStack,
     tickets: usize,
@@ -16,7 +21,9 @@ impl MyThread {
 
     pub fn new(func: extern "C" fn(Transfer) -> !) -> Self {
         let stack = ProtectedFixedSizeStack::default();
+        let thread_id = NEXT_ID.fetch_add(1, AtomicOrdering::Relaxed);
         Self {
+            id: thread_id,
             ctx: Some(Transfer::new(unsafe { Context::new(&stack, func) }, 0)),
             _stack: stack,
             tickets: 0,
@@ -61,4 +68,3 @@ impl Ord for MyThread {
         other.deadline.cmp(&self.deadline)
     }
 }
-
