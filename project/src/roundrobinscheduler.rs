@@ -22,6 +22,10 @@ impl Scheduler for RoundRobinScheduler {
         self.ready_queue.push_back(thread);
     }
 
+    fn get_cant_processes(&self) -> usize {
+        self.ready_queue.len();
+    }
+
     fn run(&mut self) {
         const THE_NUMBER_OF_THE_BEAST: usize = 666;
 

@@ -4,7 +4,13 @@ use crate::realtimescheduler::RealTimeScheduler;
 use crate::ticketscheduler::TicketScheduler;
 use crate::mymutex::MyMutex;
 use crate::mythread::MyThread;
+use crate::types::enums::SchedulingAlgorithm;
 // use crate::timer;
+use std::cell::UnsafeCell;
+
+
+static mut MASTER: UnsafeCell<Option<MasterOfPuppets>> = UnsafeCell::new(None);
+static MY_MUTEX: MyMutex = MyMutex::new();
 
 
 pub struct MyPthreads {
@@ -21,7 +27,7 @@ impl MyPthreads {
     }
 
     pub fn my_thread_yield(&mut self) { // Coming Soon!
-
+        self.thread.ctx.context.resume(0);
     }
 
     pub fn my_thread_join(&mut self) { // Coming Soon!
@@ -37,8 +43,8 @@ impl MyPthreads {
         self.is_detached = true;
     }
 
-    pub fn my_thread_chsched(&self) { // Coming Soon!
-
+    pub fn my_thread_chsched(&self, sched_type: SchedulingAlgorithm) { // Coming Soon!
+        
     }
 
     pub fn my_thread_end(&mut self) {
