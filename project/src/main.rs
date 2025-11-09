@@ -1,81 +1,51 @@
 mod mythread;
-mod roundrobinscheduler;
 mod ticketscheduler;
-mod timer;
 mod scheduler;
-mod realtimescheduler;
 
 use mythread::MyThread;
 use scheduler::Scheduler;
-use roundrobinscheduler::RoundRobinScheduler;
 use ticketscheduler::TicketScheduler;
+// use roundrobinscheduler::RoundRobinScheduler;
 use context::Transfer;
-use realtimescheduler::RealTimeScheduler;
 
 
+
+struct Test {
+    message: String,
+}
 
 fn main() {
     const THE_NUMBER_OF_THE_BEAST: usize = 666;
-    timer::start_timer();
 
+    let mut mad_scientist_message = Test {
+        message: "I am mad scientist, is so coool, son of a bitch!".to_string()
+    };
 
-    extern "C" fn context_function1(mut t: Transfer) -> ! {
-        for i in 0usize..20 {
-            println!("thread 1 Currently at:  {}", i);
-            if timer::should_preempt() {
-                println!("thread 1 Preempting at {}", i);
-                t = unsafe { t.context.resume(0) };
-            }
-        }
+    // puntero correcto al struct
+    let ptr = &mut mad_scientist_message as *mut Test;
+
+    extern "C" fn context_function(t: Transfer) -> ! {
+        // recuperar el puntero que enviamos desde el main
+        let ptr = t.data as *mut Test;
+        let info: &mut Test = unsafe { &mut *ptr };
+
+        println!("{}", info.message);
+
+        // volver al contexto anterior enviando un usize
         unsafe {
             t.context.resume(THE_NUMBER_OF_THE_BEAST);
         }
-        unreachable!();
-    }
-    extern "C" fn context_function2(mut t: Transfer) -> ! {
-        for i in 0usize..20 {
-            println!("thread 2 Currently at:  {}", i);
-            if timer::should_preempt() {
-                println!("thread 2 Preempting at {}", i);
-                t = unsafe { t.context.resume(0) };
-            }
-        }
-        unsafe {
-            t.context.resume(THE_NUMBER_OF_THE_BEAST);
-        }
+
         unreachable!();
     }
 
-    extern "C" fn context_function3(mut t: Transfer) -> ! {
-        for i in 0usize..20 {
-            println!("thread 3 Currently at:  {}", i);
-            if timer::should_preempt() {
-                println!("thread 3 Preempting at {}", i);
-                t = unsafe { t.context.resume(0) };
-            }
-        }
-        unsafe {
-            t.context.resume(THE_NUMBER_OF_THE_BEAST);
-        }
-        unreachable!();
-    }
-    let mut sched: Box<dyn Scheduler> = Box::new(RealTimeScheduler::new());
+    // scheduler dinámico
+    let mut sched: Box<dyn Scheduler> = Box::new(TicketScheduler::new());
 
-    let mut thread1 = MyThread::new(context_function1);
-    thread1.set_deadline(10);
-    // thread1.add_tickets(25);
-    let mut thread2 = MyThread::new(context_function2);
-    thread2.set_deadline(15);
-    // thread2.add_tickets(20);
-    let mut thread3 = MyThread::new(context_function3);
-    thread3.set_deadline(5);
-    // thread3.add_tickets(30);
+    // el puntero (ptr) se castea a usize antes de mandarlo
+    let mut thread1 = MyThread::new(context_function, ptr as usize);
+    thread1.add_tickets(10);
 
     sched.enqueue_process(thread1);
-    sched.enqueue_process(thread2);
-    sched.enqueue_process(thread3);
-
-
     sched.run();
-    
 }

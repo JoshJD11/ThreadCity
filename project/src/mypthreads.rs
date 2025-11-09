@@ -11,13 +11,13 @@ pub struct MyPthreads {
     thread: MyThread,
     mutex: MyMutex,
     is_detached: bool,
-}
+} 
 
 impl MyPthreads {
 
-    pub fn my_thread_create(&mut self) { // Coming Soon!
+    pub fn my_thread_create(&mut self, func: extern "C" fn(Transfer) -> !, args: usize) { // Coming Soon!
         self.is_detached = false;
-
+        self.thread = MyThread::new(func, args);
     }
 
     pub fn my_thread_yield(&mut self) { // Coming Soon!

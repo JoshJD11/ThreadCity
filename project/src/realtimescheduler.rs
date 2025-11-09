@@ -25,7 +25,7 @@ impl Scheduler for RealTimeScheduler {
         while let Some(mut t) = self.ready_queue.pop() {
             unsafe {
                 if let Some(ctx) = t.ctx.take() { 
-                    let new_ctx = ctx.context.resume(0);
+                    let new_ctx = ctx.context.resume(t.args);
                     t.ctx = Some(new_ctx);
                 }
             }

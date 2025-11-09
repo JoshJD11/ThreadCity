@@ -11,6 +11,7 @@ static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 pub struct MyThread { 
     pub id: usize,
     pub ctx: Option<Transfer>,
+    pub args: usize,
     _stack: ProtectedFixedSizeStack,
     tickets: usize,
     deadline: usize,
@@ -19,12 +20,13 @@ pub struct MyThread {
 
 impl MyThread {
 
-    pub fn new(func: extern "C" fn(Transfer) -> !) -> Self {
+    pub fn new(func: extern "C" fn(Transfer) -> !, arguments: usize) -> Self {
         let stack = ProtectedFixedSizeStack::default();
         let thread_id = NEXT_ID.fetch_add(1, AtomicOrdering::Relaxed);
         Self {
             id: thread_id,
             ctx: Some(Transfer::new(unsafe { Context::new(&stack, func) }, 0)),
+            args: arguments,
             _stack: stack,
             tickets: 0,
             deadline: 0,
