@@ -5,11 +5,12 @@ use crate::ticketscheduler::TicketScheduler;
 use crate::mymutex::MyMutex;
 use crate::mythread::MyThread;
 use crate::types::enums::SchedulingAlgorithm;
+use crate::masterofpuppets::MasterOfPuppets;
 // use crate::timer;
-use std::cell::UnsafeCell;
 
 
-static mut MASTER: UnsafeCell<Option<MasterOfPuppets>> = UnsafeCell::new(None);
+
+static mut MASTER: Option<MasterOfPuppets> = None;
 static MY_MUTEX: MyMutex = MyMutex::new();
 
 
@@ -21,10 +22,43 @@ pub struct MyPthreads {
 
 impl MyPthreads {
 
-    pub fn my_thread_create(&mut self, func: extern "C" fn(Transfer) -> !, args: usize) { // Coming Soon!
+    pub fn my_thread_create(&mut self, func: extern "C" fn(Transfer) -> !, args: usize, sched_type: SchedulingAlgorithm) {
         self.is_detached = false;
-        self.thread = MyThread::new(func, args);
+        self.thread = MyThread::new(func, args, sched_type);
+
+        let mut need_to_run = false;
+
+        unsafe {
+      
+            if MASTER.is_none() {
+                MASTER = Some(MasterOfPuppets::new());
+                need_to_run = true;
+            }
+
+
+            // MY_MUTEX.lock(); // Scehduler is non-preemptive right now
+            let master = MASTER.as_mut().unwrap();
+            master.enqueue_process(self.thread);
+            // MY_MUTEX.unlock();
+
+
+            if need_to_run {
+
+                let master_ptr = master as *mut Scheduler as usize;
+
+                let puppeteer_thread = MyThread::new(
+                    MasterOfPuppets::scheduler_init,
+                    master_ptr,
+                    SchedulingAlgorithm::RoundRobin
+                );
+
+                master.actual_thread = puppeteer_thread;
+                master.actual_thread.ctx.context.resume(master_ptr);
+            }
+        }
     }
+
+
 
     pub fn my_thread_yield(&mut self) { // Coming Soon!
         self.thread.ctx.context.resume(0);

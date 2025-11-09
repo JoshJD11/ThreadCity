@@ -23,7 +23,7 @@ impl Scheduler for RoundRobinScheduler {
     }
 
     fn get_cant_processes(&self) -> usize {
-        self.ready_queue.len();
+        self.ready_queue.len()
     }
 
     fn run(&mut self) {

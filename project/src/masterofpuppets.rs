@@ -25,6 +25,7 @@ pub struct MasterOfPuppets {
     round_robin_scheduler: Box<dyn Scheduler>,
     ticket_scheduler: Box<dyn Scheduler>,
     real_time_scheduler: Box<dyn Scheduler>,
+    pub actual_thread: Option<MyThread>,
 }
 
 impl MasterOfPuppets {
@@ -39,6 +40,7 @@ impl MasterOfPuppets {
             round_robin_scheduler: rr_sched,
             real_time_scheduler: rt_sched,
             ticket_scheduler: t_sched,
+            actual_thread: None,
         }
     }
 
@@ -79,6 +81,10 @@ impl Scheduler for MasterOfPuppets {
             SchedulingAlgorithm::RealTime => self.enqueue_real_time(thread),
             SchedulingAlgorithm::RoundRobin => self.enqueue_round_robin(thread),
         }
+    }
+
+    fn is_empty(&self) {
+        self.ready_queue.is_empty()
     }
 
     fn get_cant_processes(&self) -> usize {
