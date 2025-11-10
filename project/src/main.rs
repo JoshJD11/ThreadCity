@@ -14,7 +14,7 @@ use scheduler::Scheduler;
 use mypthreads::MyPthreads;
 use context::Transfer;
 use crate::types::SchedulingAlgorithm;
-
+use crate::mypthreads::runMaster;
 
 struct Test {
     message: String,
@@ -65,41 +65,14 @@ fn main() {
         }
         unreachable!();
     }
-    let thread1 = MyThread::new(context_function1, 0, SchedulingAlgorithm::RoundRobin);
-    let thread2 = MyThread::new(context_function2, 0, SchedulingAlgorithm::RoundRobin);
-    let thread3 = MyThread::new(context_function3, 0, SchedulingAlgorithm::RoundRobin);
+    let mut thread1 = MyPthreads::new(); //Tiene que ser MyPthreads no MyThreads
+    let mut thread2 = MyPthreads::new();
+    let mut thread3 = MyPthreads::new();
+    thread1.my_thread_create( context_function1, 0, SchedulingAlgorithm::RoundRobin);
+    thread2.my_thread_create( context_function2, 0, SchedulingAlgorithm::RoundRobin);
+    thread3.my_thread_create( context_function3, 0, SchedulingAlgorithm::Lottery);
+    unsafe {
+        runMaster();
+    }
 
-    let mut master = MASTER.lock().unwrap();
-    master.run();
-
-    // let mut mad_scientist_message = Test {
-    //     message: "I am mad scientist, is so coool, son of a bitch!".to_string()
-    // };
-
-
-    // let ptr = &mut mad_scientist_message as *mut Test;
-
-    // extern "C" fn context_function(t: Transfer) -> ! {
- 
-    //     let ptr = t.data as *mut Test;
-    //     let info: &mut Test = unsafe { &mut *ptr };
-
-    //     println!("{}", info.message);
-
-    //     unsafe {
-    //         t.context.resume(THE_NUMBER_OF_THE_BEAST);
-    //     }
-
-    //     unreachable!();
-    // }
-
-
-    // let mut sched: Box<dyn Scheduler> = Box::new(TicketScheduler::new());
-
-
-    // let mut thread1 = MyThread::new(context_function, ptr as usize, SchedulingAlgorithm::RoundRobin);
-    // thread1.add_tickets(10);
-
-    // sched.enqueue_process(thread1);
-    // sched.run();
 }
