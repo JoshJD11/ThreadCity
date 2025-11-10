@@ -14,6 +14,10 @@ impl RoundRobinScheduler {
         }
     }
 
+    // pub fn pop_by_scheduler_type() {
+
+    // }
+
 }
 
 impl Scheduler for RoundRobinScheduler {
@@ -29,7 +33,7 @@ impl Scheduler for RoundRobinScheduler {
     fn run(&mut self) {
         const THE_NUMBER_OF_THE_BEAST: usize = 666;
 
-        while let Some(mut t) = self.ready_queue.pop_front() {
+        while let Some(mut t) = self.ready_queue.pop_front() { // TODO: if None -> continue
             unsafe {
                 if let Some(ctx) = t.ctx.take() { 
                     let new_ctx = ctx.context.resume(t.args);
@@ -48,3 +52,4 @@ impl Scheduler for RoundRobinScheduler {
         println!("Too ezz");
     }
 }
+

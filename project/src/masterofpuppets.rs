@@ -3,25 +3,27 @@ use crate::roundrobinscheduler::RoundRobinScheduler;
 use crate::realtimescheduler::RealTimeScheduler;
 use crate::ticketscheduler::TicketScheduler;
 use crate::types::enums::SchedulingAlgorithm;
+use crate::mythread::MyThread;
+use context::Transfer;
 
 
 static THE_NUMBER_OF_THE_BEAST: usize = 666;
 
 
 extern "C" fn scheduler_init(mut t: Transfer) -> ! {
-
     let sched = unsafe { &mut *(t.data as *mut dyn Scheduler) };
     sched.run();  
 
     unsafe {
         t.context.resume(THE_NUMBER_OF_THE_BEAST);
     }
+
     unreachable!();
 }
 
 
 pub struct MasterOfPuppets { 
-    ready_queue: Box<dyn Scheduler>,
+    pub ready_queue: Box<dyn Scheduler>,
     round_robin_scheduler: Box<dyn Scheduler>,
     ticket_scheduler: Box<dyn Scheduler>,
     real_time_scheduler: Box<dyn Scheduler>,
@@ -81,10 +83,6 @@ impl Scheduler for MasterOfPuppets {
             SchedulingAlgorithm::RealTime => self.enqueue_real_time(thread),
             SchedulingAlgorithm::RoundRobin => self.enqueue_round_robin(thread),
         }
-    }
-
-    fn is_empty(&self) {
-        self.ready_queue.is_empty()
     }
 
     fn get_cant_processes(&self) -> usize {

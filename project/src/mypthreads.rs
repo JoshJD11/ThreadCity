@@ -2,20 +2,32 @@ use crate::scheduler::Scheduler;
 use crate::roundrobinscheduler::RoundRobinScheduler;
 use crate::realtimescheduler::RealTimeScheduler;
 use crate::ticketscheduler::TicketScheduler;
-use crate::mymutex::MyMutex;
 use crate::mythread::MyThread;
 use crate::types::enums::SchedulingAlgorithm;
 use crate::masterofpuppets::MasterOfPuppets;
-// use crate::timer;
+use crate::mymutex::MyMutex;
+use context::Transfer;
+
+lazy_static! {
+    pub static ref MASTER: MyMutex<MasterOfPuppets> = MyMutex::new(MasterOfPuppets::new());
+}
+// static mut MASTER: Option<MasterOfPuppets> = None;
 
 
+// extern "C" fn puppeteer_init(mut t: Transfer) -> ! {
+//     const THE_NUMBER_OF_THE_BEAST: usize = 666;
+//     let master = unsafe { &mut *(t.data as *mut MasterOfPuppets) };
+//     master.run();
 
-static mut MASTER: Option<MasterOfPuppets> = None;
-static MY_MUTEX: MyMutex = MyMutex::new();
+//     unsafe {
+//         t.context.resume(THE_NUMBER_OF_THE_BEAST);
+//     }
+//     unreachable!();
+// }
 
 
 pub struct MyPthreads {
-    thread: MyThread,
+    thread: Option<MyThread>,
     mutex: MyMutex,
     is_detached: bool,
 } 
@@ -25,53 +37,53 @@ impl MyPthreads {
     pub fn my_thread_create(&mut self, func: extern "C" fn(Transfer) -> !, args: usize, sched_type: SchedulingAlgorithm) {
         self.is_detached = false;
         self.thread = MyThread::new(func, args, sched_type);
-
-        let mut need_to_run = false;
+        // let mut need_to_run = false;
 
         unsafe {
       
-            if MASTER.is_none() {
-                MASTER = Some(MasterOfPuppets::new());
-                need_to_run = true;
+            let mut master = MASTER.lock().unwrap();
+            if master.is_none() {
+                master = Some(MasterOfPuppets::new());
             }
 
-
-            // MY_MUTEX.lock(); // Scehduler is non-preemptive right now
             let master = MASTER.as_mut().unwrap();
-            master.enqueue_process(self.thread);
-            // MY_MUTEX.unlock();
+            // if master.get_cant_processes() == 0 {
+            //     need_to_run = true;
+            // }
+            let thread = self.thread.take().unwrap();
+            master.enqueue_process(thread);
 
 
-            if need_to_run {
+            // if need_to_run {
 
-                let master_ptr = master as *mut Scheduler as usize;
+            //     let master_ptr = master as *mut MasterOfPuppets as usize;
 
-                let puppeteer_thread = MyThread::new(
-                    MasterOfPuppets::scheduler_init,
-                    master_ptr,
-                    SchedulingAlgorithm::RoundRobin
-                );
+            //     let puppeteer_thread = MyThread::new(
+            //         puppeteer_init,
+            //         master_ptr,
+            //         SchedulingAlgorithm::RoundRobin
+            //     );
 
-                master.actual_thread = puppeteer_thread;
-                master.actual_thread.ctx.context.resume(master_ptr);
-            }
+            //     master.actual_thread = puppeteer_thread;
+            //     master.actual_thread.ctx.context.resume(master_ptr);
+            // }
         }
     }
 
 
-
-    pub fn my_thread_yield(&mut self) { // Coming Soon!
-        self.thread.ctx.context.resume(0);
+    pub fn my_thread_yield(mut t: Transfer) { 
+        println!("Yielding...");
+        unsafe { t.context.resume(0); }
     }
 
-    pub fn my_thread_join(&mut self) { // Coming Soon!
-        if !self.is_detached {
-
-        }
-        else {
-            println!("The thread is detached, so you are not able to join this thread.");
-        }
-    }
+    // pub fn my_thread_join(&mut self) { // Coming Soon! 
+    //     if !self.is_detached {
+  
+    //     }
+    //     else {
+    //         println!("The thread is detached, so you are not able to join this thread.");
+    //     }
+    // }
 
     pub fn my_thread_detach(&mut self) {
         self.is_detached = true;
@@ -82,7 +94,7 @@ impl MyPthreads {
     }
 
     pub fn my_thread_end(&mut self) {
-        self.thread.ctx = None;
+        self.thread = None;
     }
 
     pub fn my_mutex_init(&mut self) {
@@ -101,7 +113,7 @@ impl MyPthreads {
         self.mutex.unlock();
     }
 
-    pub fn my_mutex_destroy(&mut self) { // We have to talk about what should we do with this method.
+    pub fn my_mutex_destroy(&mut self) { 
         self.mutex.destroy();
     }
 }
