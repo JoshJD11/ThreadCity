@@ -6,35 +6,36 @@ use crate::types::enums::SchedulingAlgorithm;
 use crate::mythread::MyThread;
 use context::Transfer;
 
+use crate::masterscheduler::MasterScheduler; // temporal
+
 static THE_NUMBER_OF_THE_BEAST: usize = 666;
 
 
 extern "C" fn rr_scheduler_init(mut t: Transfer) -> ! {
-    // thin pointer to concrete type => safe to cast through usize
+
     let sched = unsafe { &mut *(t.data as *mut RoundRobinScheduler) } as &mut dyn Scheduler;
-    sched.run();
+    t = sched.run(t);
     unsafe { t.context.resume(THE_NUMBER_OF_THE_BEAST); }
     unreachable!();
 }
 
 extern "C" fn rt_scheduler_init(mut t: Transfer) -> ! {
     let sched = unsafe { &mut *(t.data as *mut RealTimeScheduler) } as &mut dyn Scheduler;
-    sched.run();
+    t = sched.run(t);
     unsafe { t.context.resume(THE_NUMBER_OF_THE_BEAST); }
     unreachable!();
 }
 
 extern "C" fn ticket_scheduler_init(mut t: Transfer) -> ! {
     let sched = unsafe { &mut *(t.data as *mut TicketScheduler) } as &mut dyn Scheduler;
-    sched.run();
+    t = sched.run(t);
     unsafe { t.context.resume(THE_NUMBER_OF_THE_BEAST); }
     unreachable!();
 }
 
 
-
 pub struct MasterOfPuppets {
-    pub ready_queue: Box<RoundRobinScheduler>,
+    pub ready_queue: Box<MasterScheduler>,
     round_robin_scheduler: Box<RoundRobinScheduler>,
     ticket_scheduler: Box<TicketScheduler>,
     real_time_scheduler: Box<RealTimeScheduler>,
@@ -43,7 +44,7 @@ pub struct MasterOfPuppets {
 impl MasterOfPuppets {
 
     pub fn new() -> Self {
-        let puppeteer: Box<RoundRobinScheduler> = Box::new(RoundRobinScheduler::new()); 
+        let puppeteer: Box<MasterScheduler> = Box::new(MasterScheduler::new()); 
         let rr_sched: Box<RoundRobinScheduler> = Box::new(RoundRobinScheduler::new());
         let rt_sched: Box<RealTimeScheduler> = Box::new(RealTimeScheduler::new());
         let t_sched: Box<TicketScheduler> = Box::new(TicketScheduler::new());
@@ -82,11 +83,7 @@ impl MasterOfPuppets {
         }
     }
 
-}
-
-impl Scheduler for MasterOfPuppets {
-
-    fn enqueue_process(&mut self, thread: Box<MyThread>) {
+    pub fn enqueue_process(&mut self, thread: Box<MyThread>) {
         match thread.sched_type {
             SchedulingAlgorithm::Lottery => self.enqueue_lottery(thread),
             SchedulingAlgorithm::RealTime => self.enqueue_real_time(thread),
@@ -94,11 +91,13 @@ impl Scheduler for MasterOfPuppets {
         }
     }
 
-    fn get_cant_processes(&self) -> usize {
+    pub fn get_cant_processes(&self) -> usize {
         self.ready_queue.get_cant_processes()
     }
 
-    fn run(&mut self) {
+    pub fn run(&mut self) {
         self.ready_queue.run();
     }
+
 }
+

@@ -17,7 +17,7 @@ static MASTER: OnceLock<Mutex<MasterOfPuppets>> = OnceLock::new();
 pub fn runMaster() {
     if let Some(master_mutex) = MASTER.get() {
         let mut master = master_mutex.lock().unwrap();
-        master.run();
+        master.run(); // sale que recibe un parámetro
     }
 }
 

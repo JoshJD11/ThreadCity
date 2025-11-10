@@ -3,11 +3,11 @@ use crate::mythread::MyThread;
 use crate::scheduler::Scheduler;
 use context::Transfer;
 
-pub struct RoundRobinScheduler {
+pub struct MasterScheduler {
     ready_queue: VecDeque<Box<MyThread>>,
 }
 
-impl RoundRobinScheduler {
+impl MasterScheduler {
     pub fn new() -> Self {
         Self {
             ready_queue: VecDeque::new(),
@@ -15,17 +15,17 @@ impl RoundRobinScheduler {
     }
 }
 
-impl Scheduler for RoundRobinScheduler {
+impl MasterScheduler {
 
-    fn enqueue_process(&mut self, thread: Box<MyThread>) {
+    pub fn enqueue_process(&mut self, thread: Box<MyThread>) {
         self.ready_queue.push_back(thread);
     }
 
-    fn get_cant_processes(&self) -> usize {
+    pub fn get_cant_processes(&self) -> usize {
         self.ready_queue.len()
     }
 
-    fn run(&mut self, mut puppeteer_transfer: Transfer) -> Transfer {
+    pub fn run(&mut self) {
         const THE_NUMBER_OF_THE_BEAST: usize = 666;
 
         while let Some(mut t) = self.ready_queue.pop_front() {
@@ -44,11 +44,7 @@ impl Scheduler for RoundRobinScheduler {
             } else {
                 self.ready_queue.push_back(t);
             }
-            unsafe {
-                puppeteer_transfer = puppeteer_transfer.context.resume(0);
-            }
         }
-        println!("RR done");
-        return puppeteer_transfer;
+        println!("Master done");
     }
 }

@@ -1,5 +1,6 @@
 use crate::mythread::MyThread;
 use crate::scheduler::Scheduler;
+use context::Transfer;
 use rand::Rng;
 
 pub struct TicketScheduler {
@@ -45,7 +46,7 @@ impl Scheduler for TicketScheduler {
         self.ready_queue.len()
     }
 
-    fn run(&mut self) {
+    fn run(&mut self, mut puppeteer_transfer: Transfer) -> Transfer {
         const THE_NUMBER_OF_THE_BEAST: usize = 666;
 
 
@@ -67,9 +68,13 @@ impl Scheduler for TicketScheduler {
                     self.ready_queue.remove(idx);
                 }
             }
+            unsafe {
+                puppeteer_transfer = puppeteer_transfer.context.resume(0);
+            }
         }
 
         println!("Tickets done");
+        return puppeteer_transfer;
     }
 }
 

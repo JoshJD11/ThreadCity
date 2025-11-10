@@ -8,6 +8,7 @@ mod masterofpuppets;
 mod timer;
 mod types;
 mod mymutex;
+mod masterscheduler;
 
 use mythread::MyThread;
 use scheduler::Scheduler;

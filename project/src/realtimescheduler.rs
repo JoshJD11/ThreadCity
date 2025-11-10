@@ -1,5 +1,6 @@
 use crate::mythread::MyThread;
 use crate::scheduler::Scheduler;
+use context::Transfer;
 use std::collections::BinaryHeap;
 
 pub struct RealTimeScheduler {
@@ -23,7 +24,7 @@ impl Scheduler for RealTimeScheduler {
         self.ready_queue.len()
     }
 
-    fn run(&mut self) {
+    fn run(&mut self, mut puppeteer_transfer: Transfer) -> Transfer {
         const THE_NUMBER_OF_THE_BEAST: usize = 666;
 
         while let Some(mut t) = self.ready_queue.pop() {
@@ -42,8 +43,12 @@ impl Scheduler for RealTimeScheduler {
             } else {
                 self.ready_queue.push(t);
             }
+            unsafe {
+                puppeteer_transfer = puppeteer_transfer.context.resume(0);
+            }
         }
 
         println!("RT done");
+        return puppeteer_transfer;
     }
 }
