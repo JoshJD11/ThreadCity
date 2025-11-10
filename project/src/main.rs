@@ -26,9 +26,9 @@ fn main() {
 
 
     extern "C" fn context_function1(mut t: Transfer) -> ! {
-        t = MyPthreads::my_thread_yield(t);
+        t = MyPthreads::my_thread_yield(t, 0);
         unsafe {
-            t.context.resume(THE_NUMBER_OF_THE_BEAST);
+            t = MyPthreads::my_thread_yield(t, THE_NUMBER_OF_THE_BEAST);
         }
         unreachable!();
     }
@@ -64,9 +64,9 @@ fn main() {
     let mut thread1 = MyPthreads::new(); //Tiene que ser MyPthreads no MyThreads
     let mut thread2 = MyPthreads::new();
     let mut thread3 = MyPthreads::new();
-    thread1.my_thread_create( context_function1, 0, SchedulingAlgorithm::RoundRobin);
-    thread2.my_thread_create( context_function2, 0, SchedulingAlgorithm::RoundRobin);
-    thread3.my_thread_create( context_function3, 0, SchedulingAlgorithm::RoundRobin);
+    thread1.my_thread_create( context_function1, 0, 0, 0, SchedulingAlgorithm::RoundRobin);
+    thread2.my_thread_create( context_function2, 0, 5, 20,  SchedulingAlgorithm::Lottery); //function, arguments of the function, tickets, deadline, scheduling algorithm
+    thread3.my_thread_create( context_function3, 0, 10, 3, SchedulingAlgorithm::RealTime);
     unsafe {
         runMaster();
     }

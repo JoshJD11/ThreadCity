@@ -48,6 +48,8 @@ impl Scheduler for TicketScheduler {
     fn run(&mut self) {
         const THE_NUMBER_OF_THE_BEAST: usize = 666;
 
+
+
         while let Some(idx) = self.get_winner_index() {
 
             let t = &mut self.ready_queue[idx];

@@ -23,7 +23,7 @@ pub struct MyThread {
 impl MyThread {
 
     pub fn new(func: extern "C" fn(Transfer) -> !, arguments: usize, sched_algorithm: SchedulingAlgorithm) -> Self {
-        let stack = ProtectedFixedSizeStack::default();
+        let stack = ProtectedFixedSizeStack::new(1024 * 1024).unwrap();
         let thread_id = NEXT_ID.fetch_add(1, AtomicOrdering::Relaxed);
         Self {
             id: thread_id,

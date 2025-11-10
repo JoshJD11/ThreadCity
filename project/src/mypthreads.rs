@@ -35,9 +35,10 @@ impl MyPthreads {
         }
     }
 
-    pub fn my_thread_create(&mut self, func: extern "C" fn(Transfer) -> !, args: usize, sched_type: SchedulingAlgorithm) {
-        let thread = Box::new(MyThread::new(func, args, sched_type));
-
+    pub fn my_thread_create(&mut self, func: extern "C" fn(Transfer) -> !, args: usize, tickets: usize, deadline: usize, sched_type: SchedulingAlgorithm) {
+        let mut thread = Box::new(MyThread::new(func, args, sched_type));
+        thread.set_deadline(deadline);
+        thread.add_tickets(tickets);
 
         MASTER.get_or_init(|| Mutex::new(MasterOfPuppets::new()));
 
@@ -45,12 +46,9 @@ impl MyPthreads {
         master.lock().unwrap().enqueue_process(thread);
     }
 
-    pub fn my_thread_yield(t: Transfer) -> Transfer { 
-        // let t: *mut Transfer = ptr as *mut Transfer;
-        // let t_ref: &mut Transfer = unsafe { &mut *t };
-        
+    pub fn my_thread_yield(t: Transfer, args: usize) -> Transfer { 
         println!("Yielding...");
-        let back = unsafe { t.context.resume(666) };
+        let back = unsafe { t.context.resume(args) };
         return back;
     }
 
