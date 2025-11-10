@@ -3,7 +3,7 @@ use crate::scheduler::Scheduler;
 use std::collections::BinaryHeap;
 
 pub struct RealTimeScheduler {
-    ready_queue: BinaryHeap<MyThread>,
+    ready_queue: BinaryHeap<Box<MyThread>>,
 }
 
 impl RealTimeScheduler {
@@ -15,7 +15,7 @@ impl RealTimeScheduler {
 }
 
 impl Scheduler for RealTimeScheduler {
-    fn enqueue_process(&mut self, thread: MyThread) {
+    fn enqueue_process(&mut self, thread: Box<MyThread>) {
         self.ready_queue.push(thread);
     }
 
@@ -23,18 +23,18 @@ impl Scheduler for RealTimeScheduler {
         self.ready_queue.len()
     }
 
-
     fn run(&mut self) {
         const THE_NUMBER_OF_THE_BEAST: usize = 666;
 
         while let Some(mut t) = self.ready_queue.pop() {
+
             unsafe {
                 if let Some(ctx) = t.ctx.take() { 
                     let new_ctx = ctx.context.resume(t.args);
                     t.ctx = Some(new_ctx);
                 }
             }
-            
+
             if let Some(ctx) = &t.ctx {
                 if ctx.data != THE_NUMBER_OF_THE_BEAST {
                     self.ready_queue.push(t);
@@ -43,6 +43,7 @@ impl Scheduler for RealTimeScheduler {
                 self.ready_queue.push(t);
             }
         }
-        println!("Too ezz");
+
+        println!("RT done");
     }
 }

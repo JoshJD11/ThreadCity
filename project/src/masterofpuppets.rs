@@ -8,16 +8,6 @@ use context::Transfer;
 
 static THE_NUMBER_OF_THE_BEAST: usize = 666;
 
-// extern "C" fn scheduler_init(mut t: Transfer) -> ! {
-//     let sched = unsafe { &mut *(t.data as *mut dyn Scheduler) };
-//     sched.run();  
-
-//     unsafe {
-//         t.context.resume(THE_NUMBER_OF_THE_BEAST);
-//     }
-
-//     unreachable!();
-// }
 
 extern "C" fn rr_scheduler_init(mut t: Transfer) -> ! {
     // thin pointer to concrete type => safe to cast through usize
@@ -65,29 +55,29 @@ impl MasterOfPuppets {
         }
     }
 
-    pub fn enqueue_round_robin(&mut self, thread: MyThread) {
+    pub fn enqueue_round_robin(&mut self, thread: Box<MyThread>) {
         self.round_robin_scheduler.enqueue_process(thread);
-         if self.round_robin_scheduler.get_cant_processes() == 1 {
-        let ptr = &mut *self.round_robin_scheduler as *mut RoundRobinScheduler;
-        let thread = MyThread::new(rr_scheduler_init, ptr as usize, SchedulingAlgorithm::RoundRobin);
-        self.ready_queue.enqueue_process(thread);
-    }
+        if self.round_robin_scheduler.get_cant_processes() == 1 {
+            let ptr = &mut *self.round_robin_scheduler as *mut RoundRobinScheduler;
+            let thread = Box::new(MyThread::new(rr_scheduler_init, ptr as usize, SchedulingAlgorithm::RoundRobin));
+            self.ready_queue.enqueue_process(thread);
+        }
     }  
 
-    pub fn enqueue_real_time(&mut self, thread: MyThread) {
+    pub fn enqueue_real_time(&mut self, thread: Box<MyThread>) {
         self.real_time_scheduler.enqueue_process(thread);
         if self.real_time_scheduler.get_cant_processes() == 1 {
             let ptr = &mut *self.real_time_scheduler as *mut RealTimeScheduler;
-            let thread = MyThread::new(rt_scheduler_init, ptr as usize, SchedulingAlgorithm::RealTime);
+            let thread = Box::new(MyThread::new(rt_scheduler_init, ptr as usize, SchedulingAlgorithm::RealTime));
             self.ready_queue.enqueue_process(thread);
         }
     }
 
-    pub fn enqueue_lottery(&mut self, thread: MyThread) {
+    pub fn enqueue_lottery(&mut self, thread: Box<MyThread>) {
         self.ticket_scheduler.enqueue_process(thread);
         if self.ticket_scheduler.get_cant_processes() == 1 {
             let ptr = &mut *self.ticket_scheduler as *mut TicketScheduler;
-            let thread = MyThread::new(ticket_scheduler_init, ptr as usize, SchedulingAlgorithm::Lottery);
+            let thread = Box::new(MyThread::new(ticket_scheduler_init, ptr as usize, SchedulingAlgorithm::Lottery));
             self.ready_queue.enqueue_process(thread);
         }
     }
@@ -96,7 +86,7 @@ impl MasterOfPuppets {
 
 impl Scheduler for MasterOfPuppets {
 
-    fn enqueue_process(&mut self, thread: MyThread) {
+    fn enqueue_process(&mut self, thread: Box<MyThread>) {
         match thread.sched_type {
             SchedulingAlgorithm::Lottery => self.enqueue_lottery(thread),
             SchedulingAlgorithm::RealTime => self.enqueue_real_time(thread),

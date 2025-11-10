@@ -11,7 +11,7 @@ use context::Transfer;
 use lazy_static::lazy_static;
 use std::sync::OnceLock;
 
-// Reemplaza static mut con OnceLock y Mutex para thread safety
+
 static MASTER: OnceLock<Mutex<MasterOfPuppets>> = OnceLock::new();
 
 pub fn runMaster() {
@@ -22,7 +22,6 @@ pub fn runMaster() {
 }
 
 pub struct MyPthreads {
-    thread: Option<MyThread>,
     mutex: MyMutex,
     is_detached: bool,
 } 
@@ -31,43 +30,41 @@ impl MyPthreads {
 
     pub fn new() -> Self {
         Self {
-            thread: None,
             mutex: MyMutex::new(),
             is_detached: false,
         }
     }
 
     pub fn my_thread_create(&mut self, func: extern "C" fn(Transfer) -> !, args: usize, sched_type: SchedulingAlgorithm) {
-        self.thread = Some(MyThread::new(func, args, sched_type));
-        
-        // Inicializar MASTER si es necesario
+        let thread = Box::new(MyThread::new(func, args, sched_type));
+
+
         MASTER.get_or_init(|| Mutex::new(MasterOfPuppets::new()));
 
-        if let Some(master_mutex) = MASTER.get() {
-            let mut master = master_mutex.lock().unwrap();
-            
-            if let Some(thread) = self.thread.take() {
-                master.enqueue_process(thread);
-            }
-        }
+        let master = MASTER.get().unwrap();
+        master.lock().unwrap().enqueue_process(thread);
     }
 
-    pub fn my_thread_yield(t: Transfer) { 
+    pub fn my_thread_yield(t: Transfer) -> Transfer { 
+        // let t: *mut Transfer = ptr as *mut Transfer;
+        // let t_ref: &mut Transfer = unsafe { &mut *t };
+        
         println!("Yielding...");
-        unsafe { t.context.resume(0); }
+        let back = unsafe { t.context.resume(666) };
+        return back;
     }
 
     pub fn my_thread_detach(&mut self) {
         self.is_detached = true;
     }
 
-    pub fn my_thread_chsched(&self, sched_type: SchedulingAlgorithm) { 
-        // Coming Soon!
-    }
+    // pub fn my_thread_chsched(&self, sched_type: SchedulingAlgorithm) { 
 
-    pub fn my_thread_end(&mut self) {
-        self.thread = None;
-    }
+    // }
+
+    // pub fn my_thread_end(&mut self) {
+        
+    // }
 
     pub fn my_mutex_init(&mut self) {
         self.mutex = MyMutex::new();
