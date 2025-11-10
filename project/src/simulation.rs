@@ -18,20 +18,13 @@ impl Simulation {
         }
     }
 
-    pub fn is_vertical_pos_valid(&self, row: usize) -> bool {
-        row < self.city.size()
-    }
-
-    pub fn is_horizontal_pos_valid(&self, column: usize) -> bool {
-        column < self.city.size()
-    }
-
     pub fn update(&mut self) {
         let mut vehicles_to_delete = Vec::new();
         for (i, vehicle) in self.active_vehicles.iter_mut().enumerate() {
             let current_street = vehicle.current_street;
-            println!("{:?}", current_street);
+            println!("Current street: {:?}", current_street); // debug
             if let Some(next_street) = vehicle.next_street() {
+                println!("Next street: {:?}", next_street); // debug
                 let mutex =  self.city.street_map.streets.get(&next_street).unwrap();
                 mutex.lock();
                 vehicle.move_forward();
@@ -103,64 +96,41 @@ impl Simulation {
         if arrival_street.is_horizontal() {
             if current_street.is_horizontal() {
                 if current_row != arrival_row {
-                    if self.is_vertical_pos_valid(current_row) {
-                        StreetId::Vertical {row: current_row, column: current_column}
-                    } else {
-                        StreetId::Vertical {row: current_row - 1, column: current_column}
-                    }
+                    StreetId::Vertical {row: current_row.saturating_sub(1), column: current_column}
                 } else {
-                    if current_column < arrival_column {
-                        StreetId::Horizontal {row: current_row, column: current_column + 1}
-                    } else {
-                        StreetId::Horizontal {row: current_row, column: current_column - 1}
-                    }
+                    StreetId::Horizontal {row: current_row,
+                        column: if arrival_column > current_column {current_column + 1} else {current_column - 1}}
                 }
             } else {
-                if current_row < arrival_row {
-                    StreetId::Vertical {row: current_row + 1, column: current_column}
-                } else if current_row > arrival_row {
-                    StreetId::Vertical {row: current_row - 1, column: current_column}
+                if current_row != arrival_row && (current_row + 1) != arrival_row {
+                    StreetId::Vertical {
+                        row: if arrival_row > current_row {current_row + 1} else {current_row - 1},
+                        column: current_column}
                 } else {
-                    if self.is_horizontal_pos_valid(current_column){
-                        StreetId::Horizontal {row: current_row, column: current_column}
-                    } else {
-                        StreetId::Horizontal {row: current_row, column: current_column - 1}
-                    }
+                    StreetId::Horizontal {
+                        row: if arrival_row > current_row {current_row + 1} else {current_row},
+                        column: if arrival_column < current_column {current_column - 1} else {current_column}}
                 }
             }
-        } else {
+        } else { // arrival street is vertical
             if current_street.is_vertical() {
                 if current_column != arrival_column {
-                    if self.is_horizontal_pos_valid(current_column){
-                        StreetId::Horizontal {row: current_row, column: current_column}
-                    } else {
-                        StreetId::Horizontal {row: current_row, column: current_column - 1}
-                    }
+                    StreetId::Horizontal {row: current_row, column: current_column.saturating_sub(1)}
                 } else {
-                    if current_row < arrival_row {
-                        StreetId::Horizontal {row: current_row + 1, column: current_column}
-                    } else {
-                        StreetId::Horizontal {row: current_row - 1, column: current_column}
+                    StreetId::Vertical {
+                        row: if arrival_row > current_row {current_row + 1} else {current_row - 1},
+                        column: current_column
                     }
                 }
             } else {
-                if current_column < arrival_column {
-                    if self.is_horizontal_pos_valid(current_column + 1) {
-                        StreetId::Horizontal { row: current_row, column: current_column + 1 }
-                    } else {
-                        if self.is_vertical_pos_valid(current_row) {
-                            StreetId::Vertical {row: current_row, column: current_column + 1}
-                        } else {
-                            StreetId::Vertical {row: current_row - 1, column: current_column}
-                        }
+                if current_column != arrival_column && (current_column + 1) != arrival_column {
+                    StreetId::Horizontal {row: current_row,
+                        column: if arrival_column > current_column {current_column + 1} else {current_column - 1}
                     }
-                } else if current_column > arrival_column {
-                    StreetId::Horizontal { row: current_row, column: current_column - 1 }
                 } else {
-                    if self.is_vertical_pos_valid(current_row) {
-                        StreetId::Vertical {row: current_row, column: current_column}
-                    } else {
-                        StreetId::Vertical {row: current_row - 1, column: current_column}
+                    StreetId::Vertical {
+                        row: current_row.saturating_sub(1),
+                        column: if arrival_column > current_column {current_column + 1} else {current_column}
                     }
                 }
             }
