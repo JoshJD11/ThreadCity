@@ -31,12 +31,15 @@ impl Simulation {
                 println!("Next street: {:?}", next_street); // debug
                 let next_street_mutexes =  self.city.street_map.streets.get(&next_street).unwrap();
                 let next_street_mutex = if lane == 0 {&next_street_mutexes.0} else {&next_street_mutexes.1};
-                next_street_mutex.lock();
-                vehicle.move_forward();
+                if next_street_mutex.try_lock() {
+                    vehicle.move_forward();
+                    current_street_mutex.unlock();
+                }
             } else {
                 vehicles_to_delete.push(i);
+                current_street_mutex.unlock();
             }
-            current_street_mutex.unlock();
+
         }
         for index in vehicles_to_delete {
             self.active_vehicles.remove(index);
@@ -65,16 +68,8 @@ impl Simulation {
         self.generate_vehicle();
         if !self.vehicles_queue.is_empty() {
             // select the next vehicle to spawn
-            let new_vehicle = self.vehicles_queue.pop_front().unwrap();
-            let new_vehicle_starting_street = new_vehicle.current_street;
-
-            // lock the starting street
-            let starting_street_mutexes = self.city.street_map.streets.get(&new_vehicle_starting_street).unwrap();
-            let starting_street_mutex = if new_vehicle.lane == 0 {&starting_street_mutexes.0} else {&starting_street_mutexes.1};
-            starting_street_mutex.lock();
-
-            // transfer the vehicle to active_vehicles
-            self.active_vehicles.push_back(new_vehicle);
+            let next_vehicle = self.vehicles_queue.pop_front().unwrap();
+            self.active_vehicles.push_back(next_vehicle);
         }
     }
 
@@ -158,5 +153,16 @@ impl Simulation {
 
     pub fn get_queued_count(&self) -> usize {
         self.vehicles_queue.len()
+    }
+
+    pub fn clear_active_vehicles(&mut self) {
+        for (i, vehicle) in self.active_vehicles.iter_mut().enumerate() {
+            let current_street = vehicle.current_street;
+            let lane = vehicle.lane;
+            let current_street_mutexes = self.city.street_map.streets.get(&current_street).unwrap();
+            let current_street_mutex = if lane == 0 {&current_street_mutexes.0} else {&current_street_mutexes.1};
+            current_street_mutex.unlock();
+        }
+        self.active_vehicles.clear();
     }
 }
