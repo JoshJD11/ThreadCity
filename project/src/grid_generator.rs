@@ -1,10 +1,14 @@
-use std::cell::RefCell;
-use std::rc::Rc;
+// grid_generator.rs
 use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, DrawingArea, Button, Box as GtkBox, Orientation, Label};
-use gtk::cairo::Context;
+use gtk::{Application, ApplicationWindow, DrawingArea, Label, Box as GtkBox, Orientation};
+use cairo::Context;
+use std::rc::Rc;
+use std::cell::{Cell, Ref, RefCell};
+use std::time::Duration;
+use context::Transfer;
 use crate::city::{City, StreetId};
 use crate::architect::CityLayout;
+use crate::mypthreads::MyPthreads;
 use crate::vehicle::{Vehicle, VehicleType};
 use crate::simulation::Simulation;
 
@@ -24,10 +28,56 @@ const CAR_COLOR: (f64, f64, f64) = (0.0, 0.7, 0.0);
 const AMBULANCE_COLOR: (f64, f64, f64) = (1.0, 0.0, 0.0);
 const TRUCK_COLOR: (f64, f64, f64) = (1.0, 1.0, 0.0);
 
-pub fn generate_grid(app: &Application) {
-    // Create the city and simulation
+// Función pública que solo crea la simulación sin la UI
+pub fn create_simulation() -> Rc<RefCell<Simulation>> {
     let city = City::new(GRID);
-    let simulation = Rc::new(RefCell::new(Simulation::new(city)));
+    Rc::new(RefCell::new(Simulation::new(city)))
+}
+
+// Función pública para obtener estadísticas
+pub fn get_simulation_stats(simulation: &Rc<RefCell<Simulation>>) -> (usize, usize) {
+    let sim = simulation.borrow();
+    (sim.get_active_vehicle_count(), sim.get_queued_count())
+}
+
+// Función pública para actualizar la simulación
+pub fn update_simulation(simulation: &Rc<RefCell<Simulation>>, mut t: Transfer,
+                         simulation_anim: Rc<RefCell<Simulation>>,
+                         drawing_area_anim: DrawingArea,
+                         info_label_anim: Label) {
+    simulation.borrow_mut().update();
+    glib::timeout_add_local(Duration::from_millis(250), move || {
+
+        // Update info label
+        let (active_count, queued_count) = get_simulation_stats(&simulation_anim);
+        info_label_anim.set_text(&format!(
+            "Active vehicles: {} | Queued vehicles: {}",
+            active_count, queued_count
+        ));
+
+        // Request redraw
+        drawing_area_anim.queue_draw();
+
+
+
+        glib::ControlFlow::Continue
+
+    });
+
+    unsafe {
+        t.context.resume(0);
+    }
+}
+
+// Función pública para agregar vehículos
+pub fn add_vehicle(simulation: &Rc<RefCell<Simulation>>) {
+    simulation.borrow_mut().spawn_vehicle();
+}
+
+// Mantenemos generate_grid para la UI
+pub fn generate_grid(app: &Application, simulation: &Rc<RefCell<Simulation>>, mut t: Transfer) -> Transfer {
+    // Create the city and simulation
+    //let simulation = create_simulation();
 
     // Create the main window
     let window = ApplicationWindow::builder()
@@ -37,170 +87,105 @@ pub fn generate_grid(app: &Application) {
         .default_height(HEIGHT + 150) // Extra space for buttons and info
         .build();
 
-    // Create a vertical box to hold the drawing area and the buttons
+    // Create main vertical box
     let vbox = GtkBox::new(Orientation::Vertical, 5);
     window.set_child(Some(&vbox));
 
-    // Create the drawing area
+    // Create info label
+    let info_label = Label::new(None);
+    info_label.set_text("Active vehicles: 0 | Queued vehicles: 0");
+    vbox.append(&info_label);
+
+    // Create drawing area
     let drawing_area = DrawingArea::new();
     drawing_area.set_size_request(WIDTH, HEIGHT);
     vbox.append(&drawing_area);
 
-    // Create info label
-    let info_label = Label::new(None);
-    vbox.append(&info_label);
-
-    // Create a horizontal box for buttons
-    let button_box = GtkBox::new(Orientation::Horizontal, 5);
-    vbox.append(&button_box);
-
-    // Create buttons
-    let spawn_button = Button::with_label("Spawn Vehicle");
-    let car_button = Button::with_label("Generate Car");
-    let ambulance_button = Button::with_label("Generate Ambulance");
-    let truck_button = Button::with_label("Generate Truck");
-
-    button_box.append(&spawn_button);
-    button_box.append(&car_button);
-    button_box.append(&ambulance_button);
-    button_box.append(&truck_button);
-
-    // Set up button click handlers
-    let simulation_clone = simulation.clone();
-    let drawing_area_clone = drawing_area.clone();
-    let info_label_clone = info_label.clone();
-    spawn_button.connect_clicked(move |_| {
-        simulation_clone.borrow_mut().spawn_vehicle();
-        drawing_area_clone.queue_draw();
-
-        // Update info label
-        let sim = simulation_clone.borrow();
-        info_label_clone.set_text(&format!(
-            "Active vehicles: {} | Queued vehicles: {}",
-            sim.get_active_vehicle_count(),
-            sim.get_queued_count()
-        ));
-    });
-
-    let simulation_car = simulation.clone();
-    let drawing_area_car = drawing_area.clone();
-    let info_label_car = info_label.clone();
-    car_button.connect_clicked(move |_| {
-        simulation_car.borrow_mut().generate_vehicle();
-        drawing_area_car.queue_draw();
-
-        // Update info label
-        let sim = simulation_car.borrow();
-        info_label_car.set_text(&format!(
-            "Active vehicles: {} | Queued vehicles: {}",
-            sim.get_active_vehicle_count(),
-            sim.get_queued_count()
-        ));
-    });
-
-    let simulation_ambulance = simulation.clone();
-    let drawing_area_ambulance = drawing_area.clone();
-    let info_label_ambulance = info_label.clone();
-    ambulance_button.connect_clicked(move |_| {
-        // For now, we'll use Car type since we don't have ambulance route generation
-        // In a real implementation, you'd have generate_ambulance() method
-        simulation_ambulance.borrow_mut().generate_vehicle();
-        drawing_area_ambulance.queue_draw();
-
-        // Update info label
-        let sim = simulation_ambulance.borrow();
-        info_label_ambulance.set_text(&format!(
-            "Active vehicles: {} | Queued vehicles: {}",
-            sim.get_active_vehicle_count(),
-            sim.get_queued_count()
-        ));
-    });
-
-    let simulation_truck = simulation.clone();
-    let drawing_area_truck = drawing_area.clone();
-    let info_label_truck = info_label.clone();
-    truck_button.connect_clicked(move |_| {
-        // For now, we'll use Car type since we don't have truck route generation
-        // In a real implementation, you'd have generate_truck() method
-        simulation_truck.borrow_mut().generate_vehicle();
-        drawing_area_truck.queue_draw();
-
-        // Update info label
-        let sim = simulation_truck.borrow();
-        info_label_truck.set_text(&format!(
-            "Active vehicles: {} | Queued vehicles: {}",
-            sim.get_active_vehicle_count(),
-            sim.get_queued_count()
-        ));
-    });
-
-    // Set up the draw function
+    // Clone simulation for the draw callback
     let simulation_draw = simulation.clone();
-    drawing_area.set_draw_func(move |_, cr, width, height| {
-        // Clear the background
+    drawing_area.set_draw_func(move |_, cr, _width, _height| {
+        // Clear background
         cr.set_source_rgb(BG.0, BG.1, BG.2);
-        cr.paint().expect("Paint failed");
+        cr.paint().unwrap();
 
-        // Create a city layout helper
-        let layout = CityLayout::new(GRID, width as f64, height as f64, MARGIN);
+        // Create city layout
+        let layout = CityLayout::new(GRID, WIDTH as f64, HEIGHT as f64, MARGIN);
 
         // Draw streets
-        cr.set_line_width(LINE_WIDTH);
         cr.set_source_rgb(STREET_COLOR.0, STREET_COLOR.1, STREET_COLOR.2);
+        cr.set_line_width(LINE_WIDTH);
 
-        let sim = simulation_draw.borrow();
-        for street in sim.city.get_all_streets() {
-            let (start, end) = layout.street_to_screen(street);
-            cr.move_to(start.0, start.1);
-            cr.line_to(end.0, end.1);
-            cr.stroke().expect("Stroke failed");
+        for street in simulation_draw.borrow().city.get_all_streets() {
+            let ((x1, y1), (x2, y2)) = layout.street_to_screen(street);
+
+            cr.move_to(x1, y1);
+            cr.line_to(x2, y2);
+            cr.stroke().unwrap();
         }
 
         // Draw vehicles
-        for vehicle in sim.active_vehicles.iter() {
-            let (start, end) = layout.street_to_screen(&vehicle.current_street);
-            // Draw vehicle as a circle in the middle of the street
-            let x = (start.0 + end.0) / 2.0;
-            let y = (start.1 + end.1) / 2.0;
+        for vehicle in &simulation_draw.borrow().active_vehicles {
+            let color = match vehicle.vehicle_type {
+                VehicleType::Car => CAR_COLOR,
+                VehicleType::Ambulance => AMBULANCE_COLOR,
+                VehicleType::Truck => TRUCK_COLOR,
+            };
 
-            // Set color based on vehicle type
-            match vehicle.vehicle_type {
-                VehicleType::Car => cr.set_source_rgb(CAR_COLOR.0, CAR_COLOR.1, CAR_COLOR.2),
-                VehicleType::Ambulance => cr.set_source_rgb(AMBULANCE_COLOR.0, AMBULANCE_COLOR.1, AMBULANCE_COLOR.2),
-                VehicleType::Truck => cr.set_source_rgb(TRUCK_COLOR.0, TRUCK_COLOR.1, TRUCK_COLOR.2),
-            }
+            cr.set_source_rgb(color.0, color.1, color.2);
 
-            cr.arc(x, y, 8.0, 0.0, 2.0 * std::f64::consts::PI);
-            cr.fill().expect("Fill failed");
+            // Get vehicle position on current street
+            let ((x1, y1), (x2, y2)) = layout.street_to_screen(&vehicle.current_street);
+
+            // Calculate vehicle position (middle of the street segment)
+            let vehicle_x = (x1 + x2) / 2.0;
+            let vehicle_y = (y1 + y2) / 2.0;
+
+            // Draw vehicle as a small rectangle
+            let vehicle_size = LINE_WIDTH / 2.0;
+            cr.rectangle(
+                vehicle_x - vehicle_size / 2.0,
+                vehicle_y - vehicle_size / 2.0,
+                vehicle_size,
+                vehicle_size
+            );
+            cr.fill().unwrap();
         }
     });
 
-    // Set up animation timer - update simulation every second
-    let simulation_timer = simulation.clone();
-    let drawing_area_timer = drawing_area.clone();
-    let info_label_timer = info_label.clone();
-    glib::timeout_add_seconds_local(1, move || {
-        simulation_timer.borrow_mut().update();
-        drawing_area_timer.queue_draw();
+    // Set up animation loop
+    let simulation_anim = simulation.clone();
+    let drawing_area_anim = drawing_area.clone();
+    let info_label_anim = info_label.clone();
+
+
+    update_simulation(&simulation_anim, t, simulation.clone(), drawing_area_anim, info_label_anim);
+
+    /*glib::timeout_add_local(Duration::from_millis(250), move || {
+        // Generar un nuevo vehículo en cada actualización
+
+
+        // Actualizar la simulación (mover vehículos existentes)
+        t = update_simulation(&simulation_anim, t);
 
         // Update info label
-        let sim = simulation_timer.borrow();
-        info_label_timer.set_text(&format!(
+        let (active_count, queued_count) = get_simulation_stats(&simulation_anim);
+        info_label_anim.set_text(&format!(
             "Active vehicles: {} | Queued vehicles: {}",
-            sim.get_active_vehicle_count(),
-            sim.get_queued_count()
+            active_count, queued_count
         ));
 
-        glib::ControlFlow::Continue
-    });
+        // Request redraw
+        drawing_area_anim.queue_draw();
 
-    // Initial info label update
-    let sim = simulation.borrow();
-    info_label.set_text(&format!(
-        "Active vehicles: {} | Queued vehicles: {}",
-        sim.get_active_vehicle_count(),
-        sim.get_queued_count()
-    ));
+
+
+        glib::ControlFlow::Continue
+
+    });*/
+
+
 
     window.present();
+    
+    return t;
 }
