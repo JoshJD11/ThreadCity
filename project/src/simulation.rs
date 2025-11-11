@@ -1,5 +1,5 @@
 use crate::city::{City, StreetId};
-use crate::vehicle::{Vehicle, VehicleType::Car};
+use crate::vehicle::{Vehicle, VehicleType};
 use std::collections::VecDeque;
 use rand::Rng;
 use rand::seq::IndexedRandom;
@@ -49,7 +49,15 @@ impl Simulation {
 
     pub fn generate_vehicle(&mut self) {
         let lane = rand::rng().random_range(0 ..= 1);
-        self.queue_vehicle(Vehicle::new(Car, self.generate_route(), lane));
+        let vehicle_type_lottery = rand::rng().random_range(1 ..= 100);
+        let vehicle_type = if vehicle_type_lottery <= 50 {
+            VehicleType::Car
+        } else if vehicle_type_lottery <= 80 {
+            VehicleType::Truck
+        } else {
+            VehicleType::Ambulance
+        };
+        self.queue_vehicle(Vehicle::new(vehicle_type, self.generate_route(), lane));
     }
 
     pub fn spawn_vehicle(&mut self) {
