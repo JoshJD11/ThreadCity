@@ -69,6 +69,7 @@ fn main() {
     thread2.my_thread_create( context_function2, 0, 5, 20,  SchedulingAlgorithm::Lottery); 
     thread3.my_thread_create( context_function3, 0, 10, 3, SchedulingAlgorithm::RealTime);
     thread1.my_thread_chsched(SchedulingAlgorithm::Lottery);
+    thread1.my_thread_end();
 
     unsafe {
         run_master();

@@ -72,9 +72,10 @@ impl MyPthreads {
         println!("scheduler changed");
     }
 
-    // pub fn my_thread_end(&mut self) {
-        
-    // }
+    pub fn my_thread_end(&mut self) {
+        let master = MASTER.get().unwrap();
+        master.lock().unwrap().end_thread(self.thread_id, self.thread_sched_actual_type);
+    }
 
     pub fn my_mutex_init(&mut self) {
         self.mutex = MyMutex::new();
