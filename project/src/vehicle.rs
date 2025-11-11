@@ -10,14 +10,16 @@ pub enum VehicleType {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Vehicle {
+    pub lane: usize,
     pub vehicle_type: VehicleType,
     pub current_street: StreetId,
     pub route: VecDeque<StreetId>
 }
 
 impl Vehicle {
-    pub fn new(vehicle_type: VehicleType, mut route: VecDeque<StreetId>) -> Self {
+    pub fn new(vehicle_type: VehicleType, mut route: VecDeque<StreetId>, lane: usize) -> Self {
         Self {
+            lane,
             vehicle_type,
             current_street: route.pop_front().unwrap(),
             route

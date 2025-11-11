@@ -1,6 +1,3 @@
-// Topological model of the city as a grid graph
-//   - N×N blocks -> (N+1)×(N+1) intersection (nodes)
-
 use std::collections::{HashMap};
 use crate::mymutex::MyMutex;
 
@@ -28,7 +25,7 @@ impl StreetId {
 }
 
 pub struct StreetMap {
-    pub streets: HashMap<StreetId, MyMutex>
+    pub streets: HashMap<StreetId, (MyMutex, MyMutex)>
 }
 
 impl StreetMap {
@@ -36,15 +33,12 @@ impl StreetMap {
         let mut streets = HashMap::with_capacity(2 * size * (size + 1));
         for row in 0 ..= size {
             for column in 0 .. size {
-                streets.insert(StreetId::Horizontal { row, column }, MyMutex::new());
+                streets.insert(StreetId::Horizontal { row, column }, (MyMutex::new(), MyMutex::new()));
             }
         }
-        let middle = size / 2;
         for row in 0 .. size {
             for column in 0 ..= size {
-                if row != middle || column % middle == 0 {
-                    streets.insert(StreetId::Vertical { row, column }, MyMutex::new());
-                }
+                streets.insert(StreetId::Vertical { row, column }, (MyMutex::new(), MyMutex::new()));
             }
         }
         Self { streets }

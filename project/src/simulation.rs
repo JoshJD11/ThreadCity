@@ -1,6 +1,7 @@
 use crate::city::{City, StreetId};
 use crate::vehicle::{Vehicle, VehicleType::Car};
 use std::collections::VecDeque;
+use rand::Rng;
 use rand::seq::IndexedRandom;
 
 pub struct Simulation {
@@ -22,17 +23,20 @@ impl Simulation {
         let mut vehicles_to_delete = Vec::new();
         for (i, vehicle) in self.active_vehicles.iter_mut().enumerate() {
             let current_street = vehicle.current_street;
+            let lane = vehicle.lane;
+            let current_street_mutexes = self.city.street_map.streets.get(&current_street).unwrap();
+            let current_street_mutex = if lane == 0 {&current_street_mutexes.0} else {&current_street_mutexes.1};
             println!("Current street: {:?}", current_street); // debug
             if let Some(next_street) = vehicle.next_street() {
                 println!("Next street: {:?}", next_street); // debug
-                let mutex =  self.city.street_map.streets.get(&next_street).unwrap();
-                mutex.lock();
+                let next_street_mutexes =  self.city.street_map.streets.get(&next_street).unwrap();
+                let next_street_mutex = if lane == 0 {&next_street_mutexes.0} else {&next_street_mutexes.1};
+                next_street_mutex.lock();
                 vehicle.move_forward();
-                self.city.street_map.streets.get(&current_street).unwrap().unlock();
             } else {
                 vehicles_to_delete.push(i);
-                self.city.street_map.streets.get(&current_street).unwrap().unlock();
             }
+            current_street_mutex.unlock();
         }
         for index in vehicles_to_delete {
             self.active_vehicles.remove(index);
@@ -44,7 +48,8 @@ impl Simulation {
     }
 
     pub fn generate_vehicle(&mut self) {
-        self.queue_vehicle(Vehicle::new(Car, self.generate_route()));
+        let lane = rand::rng().random_range(0 ..= 1);
+        self.queue_vehicle(Vehicle::new(Car, self.generate_route(), lane));
     }
 
     pub fn spawn_vehicle(&mut self) {
@@ -56,7 +61,9 @@ impl Simulation {
             let new_vehicle_starting_street = new_vehicle.current_street;
 
             // lock the starting street
-            self.city.street_map.streets.get(&new_vehicle_starting_street).unwrap().lock();
+            let starting_street_mutexes = self.city.street_map.streets.get(&new_vehicle_starting_street).unwrap();
+            let starting_street_mutex = if new_vehicle.lane == 0 {&starting_street_mutexes.0} else {&starting_street_mutexes.1};
+            starting_street_mutex.lock();
 
             // transfer the vehicle to active_vehicles
             self.active_vehicles.push_back(new_vehicle);
