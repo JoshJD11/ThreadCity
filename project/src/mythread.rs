@@ -31,7 +31,7 @@ impl MyThread {
             args: arguments,
             sched_type: sched_algorithm,
             _stack: stack,
-            tickets: 0,
+            tickets: 1,
             deadline: 0,
         }
     }

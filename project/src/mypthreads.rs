@@ -8,37 +8,44 @@ use crate::masterofpuppets::MasterOfPuppets;
 use std::sync::Mutex;
 use crate::mymutex::MyMutex;
 use context::Transfer;
-use lazy_static::lazy_static;
 use std::sync::OnceLock;
 
 
 static MASTER: OnceLock<Mutex<MasterOfPuppets>> = OnceLock::new();
 
-pub fn runMaster() {
+pub fn run_master() {
     if let Some(master_mutex) = MASTER.get() {
         let mut master = master_mutex.lock().unwrap();
-        master.run(); // sale que recibe un parámetro
+        master.run(); 
     }
 }
 
 pub struct MyPthreads {
     mutex: MyMutex,
     is_detached: bool,
+    thread_id: usize,
+    thread_sched_actual_type: SchedulingAlgorithm,
+
 } 
 
 impl MyPthreads {
 
-    pub fn new() -> Self {
+    pub fn new() -> Self { // We can delete this function
         Self {
             mutex: MyMutex::new(),
             is_detached: false,
+            thread_id: 0,
+            thread_sched_actual_type: SchedulingAlgorithm::RoundRobin,
         }
     }
 
     pub fn my_thread_create(&mut self, func: extern "C" fn(Transfer) -> !, args: usize, tickets: usize, deadline: usize, sched_type: SchedulingAlgorithm) {
         let mut thread = Box::new(MyThread::new(func, args, sched_type));
         thread.set_deadline(deadline);
-        thread.add_tickets(tickets);
+        thread.add_tickets(tickets.max(1));
+
+        self.thread_id = thread.id;
+        self.thread_sched_actual_type = sched_type;
 
         MASTER.get_or_init(|| Mutex::new(MasterOfPuppets::new()));
 
@@ -56,9 +63,12 @@ impl MyPthreads {
         self.is_detached = true;
     }
 
-    // pub fn my_thread_chsched(&self, sched_type: SchedulingAlgorithm) { 
-
-    // }
+    pub fn my_thread_chsched(&mut self, sched_type: SchedulingAlgorithm) { 
+        let master = MASTER.get().unwrap();
+        master.lock().unwrap().switch_thread_sched(self.thread_id, self.thread_sched_actual_type, sched_type);
+        self.thread_sched_actual_type = sched_type;
+        println!("scheduler changed");
+    }
 
     // pub fn my_thread_end(&mut self) {
         

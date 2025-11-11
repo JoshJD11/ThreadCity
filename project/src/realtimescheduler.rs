@@ -51,4 +51,24 @@ impl Scheduler for RealTimeScheduler {
         println!("RT done");
         return puppeteer_transfer;
     }
+
+    fn pop_by_id(&mut self, thread_id: usize) -> Option<Box<MyThread>> {
+        let mut temp = BinaryHeap::new();
+        let mut result = None;
+
+        while let Some(thread) = self.ready_queue.pop() {
+            if thread.id == thread_id {
+                result = Some(thread);
+                break;
+            } else {
+                temp.push(thread);
+            }
+        }
+
+        while let Some(thread) = temp.pop() {
+            self.ready_queue.push(thread);
+        }
+
+        result
+    }
 }

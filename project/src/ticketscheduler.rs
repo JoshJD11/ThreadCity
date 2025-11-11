@@ -76,5 +76,15 @@ impl Scheduler for TicketScheduler {
         println!("Tickets done");
         return puppeteer_transfer;
     }
+
+    fn pop_by_id(&mut self, thread_id: usize) -> Option<Box<MyThread>> {
+        if let Some(pos) = self.ready_queue.iter().position(|x| x.id == thread_id) {
+            let removed = self.ready_queue.remove(pos);
+            println!("Removed");
+            Some(removed)
+        } else {
+            None
+        }
+    }
 }
 

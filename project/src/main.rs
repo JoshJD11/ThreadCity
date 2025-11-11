@@ -15,7 +15,7 @@ use scheduler::Scheduler;
 use mypthreads::MyPthreads;
 use context::Transfer;
 use crate::types::SchedulingAlgorithm;
-use crate::mypthreads::runMaster;
+use crate::mypthreads::run_master;
 
 struct Test {
     message: String,
@@ -27,6 +27,7 @@ fn main() {
 
 
     extern "C" fn context_function1(mut t: Transfer) -> ! {
+        println!("thread 1 yield");
         t = MyPthreads::my_thread_yield(t, 0);
         unsafe {
             t = MyPthreads::my_thread_yield(t, THE_NUMBER_OF_THE_BEAST);
@@ -62,14 +63,15 @@ fn main() {
         unreachable!();
     }
 
-    let mut thread1 = MyPthreads::new(); //Tiene que ser MyPthreads no MyThreads
+    let mut thread1 = MyPthreads::new();
     let mut thread2 = MyPthreads::new();
     let mut thread3 = MyPthreads::new();
     thread1.my_thread_create( context_function1, 0, 0, 0, SchedulingAlgorithm::RoundRobin);
-    thread2.my_thread_create( context_function2, 0, 5, 20,  SchedulingAlgorithm::Lottery); //function, arguments of the function, tickets, deadline, scheduling algorithm
+    thread2.my_thread_create( context_function2, 0, 5, 20,  SchedulingAlgorithm::Lottery); 
     thread3.my_thread_create( context_function3, 0, 10, 3, SchedulingAlgorithm::RealTime);
-    unsafe {
-        runMaster();
-    }
+    thread1.my_thread_chsched(SchedulingAlgorithm::Lottery);
 
+    unsafe {
+        run_master();
+    }
 }

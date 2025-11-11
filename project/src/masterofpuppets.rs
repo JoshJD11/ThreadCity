@@ -99,5 +99,21 @@ impl MasterOfPuppets {
         self.ready_queue.run();
     }
 
+    pub fn switch_thread_sched(&mut self, id: usize, source_sched_type: SchedulingAlgorithm, target_sched_type: SchedulingAlgorithm) {
+        let thread_opt: Option<Box<MyThread>> = match source_sched_type {
+            SchedulingAlgorithm::Lottery => self.ticket_scheduler.pop_by_id(id),
+            SchedulingAlgorithm::RealTime => self.real_time_scheduler.pop_by_id(id),
+            SchedulingAlgorithm::RoundRobin => self.round_robin_scheduler.pop_by_id(id),
+        };
+
+        if let Some(mut thread) = thread_opt {
+            thread.sched_type = target_sched_type;
+            self.enqueue_process(thread);
+        } else {
+            println!("Thread with id {} not found in {:?} scheduler", id, source_sched_type);
+        }
+    }
+
+
 }
 

@@ -27,7 +27,6 @@ impl MasterScheduler {
 
     pub fn run(&mut self) {
         const THE_NUMBER_OF_THE_BEAST: usize = 666;
-
         while let Some(mut t) = self.ready_queue.pop_front() {
 
             unsafe {
