@@ -31,7 +31,7 @@ impl Scheduler for RealTimeScheduler {
 
             unsafe {
                 if let Some(ctx) = t.ctx.take() { 
-                    let new_ctx = ctx.context.resume(t.args.arguments);
+                    let new_ctx = ctx.context.resume(t.args);
                     t.ctx = Some(new_ctx);
                 }
             }

@@ -8,6 +8,7 @@ use crate::types::enums::SchedulingAlgorithm;
 
 static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 
+#[repr(C, align(8))]
 pub struct ThreadArgs {
     pub arguments: usize,
     pub preemptive: *mut bool,
@@ -39,7 +40,8 @@ impl MyThread {
 
     pub fn new(func: extern "C" fn(Transfer) -> !, arguments: usize, sched_algorithm: SchedulingAlgorithm) -> Self {
         let stack = ProtectedFixedSizeStack::new(1024 * 1024).unwrap();
-        let thread_id = NEXT_ID.fetch_add(1, AtomicOrdering::Relaxed);        let mut thread = Self {
+        let thread_id = NEXT_ID.fetch_add(1, AtomicOrdering::Relaxed);
+        let mut thread = Self {
             id: thread_id,
             ctx: None,
             args: arguments,
@@ -60,10 +62,9 @@ impl MyThread {
             ptr as usize,
         ));
 
-        thread }
+        thread 
+    }
    
-}
-
     pub fn add_tickets(&mut self, tickets: usize) {
         self.tickets += tickets;
     }
@@ -84,6 +85,7 @@ impl MyThread {
         self.preemptive = false;
     }
 
+}
 
 
 

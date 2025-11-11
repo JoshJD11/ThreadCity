@@ -22,7 +22,7 @@ struct Test {
     message: String,
 }
 
-fn isPreemptive(mut t: Transfer) {
+fn isPreemptive(mut t: Transfer) -> bool {
     let args = unsafe { &mut *(t.data as *mut ThreadArgs) };
     let preemptive_ref = unsafe { &mut *args.preemptive };
     return *preemptive_ref;
@@ -43,11 +43,19 @@ fn main() {
     }
 
     extern "C" fn context_function2(mut t: Transfer) -> ! {
+        let args = unsafe { &mut *(t.data as *mut ThreadArgs) };
+
+        // Access arguments (usize)
+        // println!("Arguments: {}", args.arguments);
+
         for i in 0usize..20 {
             println!("thread 2 Currently at:  {}", i);
-            if timer::should_preempt() && isPreemptive(t) {
+            let preemptive = unsafe { &mut *args.preemptive };
+            if timer::should_preempt() && *preemptive {
                 println!("thread 2 Preempting at {}", i);
-                t = unsafe { t.context.resume(0) };
+                unsafe {
+                    t = unsafe { t.context.resume(0) };
+                }
             }
         }
         unsafe {
@@ -59,7 +67,7 @@ fn main() {
     extern "C" fn context_function3(mut t: Transfer) -> ! {
         for i in 0usize..20 {
             println!("thread 3 Currently at:  {}", i);
-            if timer::should_preempt() && isPreemptive(t) {
+            if timer::should_preempt() {
                 println!("thread 3 Preempting at {}", i);
                 t = unsafe { t.context.resume(0) };
             }

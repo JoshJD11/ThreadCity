@@ -16,6 +16,10 @@ extern "C" fn rr_scheduler_init(mut t: Transfer) -> ! {
 
     let args = unsafe { &mut *(t.data as *mut ThreadArgs) };
     let sched = unsafe { &mut *(args.arguments as *mut RoundRobinScheduler) } as &mut dyn Scheduler;
+
+    // let args = unsafe { &mut *(t.data as *mut ThreadArgs) };
+    // let sched = unsafe { &mut *(args.arguments as *mut RoundRobinScheduler) } as &mut dyn Scheduler;
+    println!("Starting RR scheduler");
     t = sched.run(t);
     unsafe { t.context.resume(THE_NUMBER_OF_THE_BEAST); }
     unreachable!();
@@ -24,6 +28,7 @@ extern "C" fn rr_scheduler_init(mut t: Transfer) -> ! {
 extern "C" fn rt_scheduler_init(mut t: Transfer) -> ! {
     let args = unsafe { &mut *(t.data as *mut ThreadArgs) };
     let sched = unsafe { &mut *(args.arguments as *mut RealTimeScheduler) } as &mut dyn Scheduler;
+    println!("Starting RT scheduler");
     t = sched.run(t);
     unsafe { t.context.resume(THE_NUMBER_OF_THE_BEAST); }
     unreachable!();
@@ -32,6 +37,7 @@ extern "C" fn rt_scheduler_init(mut t: Transfer) -> ! {
 extern "C" fn ticket_scheduler_init(mut t: Transfer) -> ! {
     let args = unsafe { &mut *(t.data as *mut ThreadArgs) };
     let sched = unsafe { &mut *(args.arguments as *mut TicketScheduler) } as &mut dyn Scheduler;
+    println!("Starting L scheduler");
     t = sched.run(t);
     unsafe { t.context.resume(THE_NUMBER_OF_THE_BEAST); }
     unreachable!();
