@@ -23,7 +23,6 @@ struct Test {
 
 fn main() {
     const THE_NUMBER_OF_THE_BEAST: usize = 666;
-    timer::start_timer();
 
 
     extern "C" fn context_function1(mut t: Transfer) -> ! {
