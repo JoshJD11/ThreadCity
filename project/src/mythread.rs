@@ -8,6 +8,19 @@ use crate::types::enums::SchedulingAlgorithm;
 
 static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 
+pub struct ThreadArgs {
+    pub arguments: usize,
+    pub preemptive: *mut bool,
+}
+
+impl ThreadArgs {
+    pub fn new(mut args: usize, preemp: *mut bool) -> Self {
+        Self {
+            arguments: args,
+            preemptive: preemp,
+        }
+    }
+}
 
 pub struct MyThread { 
     pub id: usize,
@@ -17,24 +30,39 @@ pub struct MyThread {
     _stack: ProtectedFixedSizeStack,
     tickets: usize,
     deadline: usize,
+    pub preemptive: bool,
 }
+
 
 
 impl MyThread {
 
     pub fn new(func: extern "C" fn(Transfer) -> !, arguments: usize, sched_algorithm: SchedulingAlgorithm) -> Self {
         let stack = ProtectedFixedSizeStack::new(1024 * 1024).unwrap();
-        let thread_id = NEXT_ID.fetch_add(1, AtomicOrdering::Relaxed);
-        Self {
+        let thread_id = NEXT_ID.fetch_add(1, AtomicOrdering::Relaxed);        let mut thread = Self {
             id: thread_id,
-            ctx: Some(Transfer::new(unsafe { Context::new(&stack, func) }, arguments)), // arguments can be a default value like 0
+            ctx: None,
             args: arguments,
             sched_type: sched_algorithm,
             _stack: stack,
             tickets: 1,
             deadline: 0,
-        }
-    }
+            preemptive: true,
+        };
+
+        let preemptive_ptr: *mut bool = &mut thread.preemptive;
+
+        let args = ThreadArgs::new(arguments, preemptive_ptr);
+        let ptr = Box::into_raw(Box::new(args));
+
+        thread.ctx = Some(Transfer::new(
+            unsafe { Context::new(&thread._stack, func) },
+            ptr as usize,
+        ));
+
+        thread }
+   
+}
 
     pub fn add_tickets(&mut self, tickets: usize) {
         self.tickets += tickets;
@@ -52,7 +80,12 @@ impl MyThread {
         return self.deadline;
     }
 
-}
+    pub fn set_non_preemptive(&mut self) {
+        self.preemptive = false;
+    }
+
+
+
 
 impl PartialEq for MyThread {
     fn eq(&self, other: &Self) -> bool {

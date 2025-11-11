@@ -63,6 +63,11 @@ impl MyPthreads {
         self.is_detached = true;
     }
 
+    pub fn my_thread_join(&mut self) {
+        let master = MASTER.get().unwrap();
+        master.lock().unwrap().set_thread_non_preemtive(self.thread_id, self.thread_sched_actual_type);
+    }
+
     pub fn my_thread_chsched(&mut self, sched_type: SchedulingAlgorithm) { 
         let master = MASTER.get().unwrap();
         master.lock().unwrap().switch_thread_sched(self.thread_id, self.thread_sched_actual_type, sched_type);

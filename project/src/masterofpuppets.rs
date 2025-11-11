@@ -4,6 +4,7 @@ use crate::realtimescheduler::RealTimeScheduler;
 use crate::ticketscheduler::TicketScheduler;
 use crate::types::enums::SchedulingAlgorithm;
 use crate::mythread::MyThread;
+use crate::mythread::ThreadArgs;
 use context::Transfer;
 
 use crate::masterscheduler::MasterScheduler; // temporal
@@ -13,21 +14,24 @@ static THE_NUMBER_OF_THE_BEAST: usize = 666;
 
 extern "C" fn rr_scheduler_init(mut t: Transfer) -> ! {
 
-    let sched = unsafe { &mut *(t.data as *mut RoundRobinScheduler) } as &mut dyn Scheduler;
+    let args = unsafe { &mut *(t.data as *mut ThreadArgs) };
+    let sched = unsafe { &mut *(args.arguments as *mut RoundRobinScheduler) } as &mut dyn Scheduler;
     t = sched.run(t);
     unsafe { t.context.resume(THE_NUMBER_OF_THE_BEAST); }
     unreachable!();
 }
 
 extern "C" fn rt_scheduler_init(mut t: Transfer) -> ! {
-    let sched = unsafe { &mut *(t.data as *mut RealTimeScheduler) } as &mut dyn Scheduler;
+    let args = unsafe { &mut *(t.data as *mut ThreadArgs) };
+    let sched = unsafe { &mut *(args.arguments as *mut RealTimeScheduler) } as &mut dyn Scheduler;
     t = sched.run(t);
     unsafe { t.context.resume(THE_NUMBER_OF_THE_BEAST); }
     unreachable!();
 }
 
 extern "C" fn ticket_scheduler_init(mut t: Transfer) -> ! {
-    let sched = unsafe { &mut *(t.data as *mut TicketScheduler) } as &mut dyn Scheduler;
+    let args = unsafe { &mut *(t.data as *mut ThreadArgs) };
+    let sched = unsafe { &mut *(args.arguments as *mut TicketScheduler) } as &mut dyn Scheduler;
     t = sched.run(t);
     unsafe { t.context.resume(THE_NUMBER_OF_THE_BEAST); }
     unreachable!();
@@ -111,6 +115,21 @@ impl MasterOfPuppets {
             self.enqueue_process(thread);
         } else {
             println!("Thread with id {} not found in {:?} scheduler", id, source_sched_type);
+        }
+    }
+
+    pub fn set_thread_non_preemtive(&mut self, id: usize, sched_type: SchedulingAlgorithm) {
+        let thread_opt: Option<Box<MyThread>> = match sched_type {
+            SchedulingAlgorithm::Lottery => self.ticket_scheduler.pop_by_id(id),
+            SchedulingAlgorithm::RealTime => self.real_time_scheduler.pop_by_id(id),
+            SchedulingAlgorithm::RoundRobin => self.round_robin_scheduler.pop_by_id(id),
+        };
+
+        if let Some(mut thread) = thread_opt {
+            thread.set_non_preemptive();
+            self.enqueue_process(thread);
+        } else {
+            println!("Thread with id {} not found in {:?} scheduler", id, sched_type);
         }
     }
 

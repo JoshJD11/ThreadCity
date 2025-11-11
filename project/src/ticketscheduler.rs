@@ -57,7 +57,7 @@ impl Scheduler for TicketScheduler {
 
             unsafe {
                 if let Some(ctx) = t.ctx.take() {
-                    let new_ctx = ctx.context.resume(t.args);
+                    let new_ctx = ctx.context.resume(t.args.arguments);
                     t.ctx = Some(new_ctx);
                 }
             }

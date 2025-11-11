@@ -11,6 +11,7 @@ mod mymutex;
 mod masterscheduler;
 
 use mythread::MyThread;
+use mythread::ThreadArgs;
 use scheduler::Scheduler;
 use mypthreads::MyPthreads;
 use context::Transfer;
@@ -19,6 +20,12 @@ use crate::mypthreads::run_master;
 
 struct Test {
     message: String,
+}
+
+fn isPreemptive(mut t: Transfer) {
+    let args = unsafe { &mut *(t.data as *mut ThreadArgs) };
+    let preemptive_ref = unsafe { &mut *args.preemptive };
+    return *preemptive_ref;
 }
 
 fn main() {
@@ -38,7 +45,7 @@ fn main() {
     extern "C" fn context_function2(mut t: Transfer) -> ! {
         for i in 0usize..20 {
             println!("thread 2 Currently at:  {}", i);
-            if timer::should_preempt() {
+            if timer::should_preempt() && isPreemptive(t) {
                 println!("thread 2 Preempting at {}", i);
                 t = unsafe { t.context.resume(0) };
             }
@@ -52,7 +59,7 @@ fn main() {
     extern "C" fn context_function3(mut t: Transfer) -> ! {
         for i in 0usize..20 {
             println!("thread 3 Currently at:  {}", i);
-            if timer::should_preempt() {
+            if timer::should_preempt() && isPreemptive(t) {
                 println!("thread 3 Preempting at {}", i);
                 t = unsafe { t.context.resume(0) };
             }
@@ -62,7 +69,7 @@ fn main() {
         }
         unreachable!();
     }
-
+ 
     let mut thread1 = MyPthreads::new();
     let mut thread2 = MyPthreads::new();
     let mut thread3 = MyPthreads::new();
@@ -70,8 +77,11 @@ fn main() {
     thread2.my_thread_create( context_function2, 0, 5, 20,  SchedulingAlgorithm::Lottery); 
     thread3.my_thread_create( context_function3, 0, 10, 3, SchedulingAlgorithm::RealTime);
     thread1.my_thread_chsched(SchedulingAlgorithm::Lottery);
+    // thread2.my_thread_join();
+    
 
     unsafe {
         run_master();
     }
+
 }
