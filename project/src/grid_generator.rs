@@ -22,10 +22,145 @@ const LINE_WIDTH: f64 = 30.0;
 // Colors
 const BG: (f64, f64, f64) = (0.8, 0.8, 0.8);
 const STREET_COLOR: (f64, f64, f64) = (0.0, 0.0, 0.0);
-const CAR_COLOR: (f64, f64, f64) = (0.0, 0.7, 0.0);
+const CAR_COLOR: (f64, f64, f64) = (0.0, 1.0, 0.0);
 const AMBULANCE_COLOR: (f64, f64, f64) = (1.0, 0.0, 0.0);
 const TRUCK_COLOR: (f64, f64, f64) = (1.0, 1.0, 0.0);
 
+// Colors - después de los colores existentes
+const BOAT_COLOR: (f64, f64, f64) = (0.0, 0.0, 1.0); // Azul
+
+// Estructura para barcos decorativos - agrega esto después de los imports
+#[derive(Clone)]
+struct DecorativeBoat {
+    position: f64,
+    speed: f64,
+    direction: bool,
+    offset: f64
+}
+
+impl DecorativeBoat {
+    fn new(start_position: f64, speed: f64, direction: bool, offset: f64) -> Self {
+        Self {
+            position: start_position,
+            speed,
+            direction,
+            offset
+        }
+    }
+
+    fn update(&mut self) {
+        if self.direction {
+            self.position += self.speed;
+        } else {
+            self.position -= self.speed;
+        }
+
+        // Wrap around if position goes beyond 0.0-1.0 range
+        if self.position > 1.0 {
+            self.position -= 1.0;
+        } else if self.position < 0.0 {
+            self.position += 1.0;
+        }
+    }
+
+    fn position(&self) -> (f64, f64) {
+        let perimeter = 2.0 * ((WIDTH as f64 - 2.0 * MARGIN) + (HEIGHT as f64 - 2.0 * MARGIN));
+        let current_distance = self.position * perimeter;
+
+        let top_length = WIDTH as f64 - 2.0 * MARGIN;
+        let right_length = HEIGHT as f64 - 2.0 * MARGIN;
+        let bottom_length = top_length;
+        let left_length = right_length;
+
+        // Aplicar el offset en todas las posiciones
+        let offset = self.offset;
+
+        // Calculate position along the margin perimeter with offset
+        if current_distance < top_length {
+            // Top edge - aplicar offset en Y
+            (MARGIN + current_distance, MARGIN - offset)
+        } else if current_distance < top_length + right_length {
+            // Right edge - aplicar offset en X
+            (WIDTH as f64 - MARGIN + offset, MARGIN + (current_distance - top_length))
+        } else if current_distance < top_length + right_length + bottom_length {
+            // Bottom edge - aplicar offset en Y
+            let dist = current_distance - (top_length + right_length);
+            (WIDTH as f64 - MARGIN - dist, HEIGHT as f64 - MARGIN + offset)
+        } else {
+            // Left edge - aplicar offset en X
+            let dist = current_distance - (top_length + right_length + bottom_length);
+            (MARGIN - offset, HEIGHT as f64 - MARGIN - dist)
+        }
+    }
+}
+
+// Color para la planta nuclear
+const NUCLEAR_PLANT_COLOR: (f64, f64, f64) = (0.5, 0.0, 0.5); // Morado
+
+// Estructura para la planta nuclear
+struct NuclearPlant {
+    position: (f64, f64), // Posición fija (x, y)
+    size: f64, // Tamaño de la planta
+}
+
+impl NuclearPlant {
+    fn new(position: (f64, f64), size: f64) -> Self {
+        Self {
+            position,
+            size
+        }
+    }
+
+    fn draw(&self, cr: &Context) {
+        let (x, y) = self.position;
+
+        // Dibujar el edificio principal (rectángulo)
+        cr.set_source_rgb(NUCLEAR_PLANT_COLOR.0, NUCLEAR_PLANT_COLOR.1, NUCLEAR_PLANT_COLOR.2);
+        cr.rectangle(
+            x - self.size / 2.0,
+            y - self.size / 2.0,
+            self.size,
+            self.size
+        );
+        cr.fill().unwrap();
+
+        // Dibujar las torres de refrigeración (círculos)
+        cr.set_source_rgb(0.3, 0.3, 0.3); // Color gris para las torres
+        let tower_radius = self.size / 6.0;
+
+        // Torre izquierda
+        cr.arc(x - self.size / 3.0, y, tower_radius, 0.0, 2.0 * std::f64::consts::PI);
+        cr.fill().unwrap();
+
+        // Torre derecha
+        cr.arc(x + self.size / 3.0, y, tower_radius, 0.0, 2.0 * std::f64::consts::PI);
+        cr.fill().unwrap();
+
+        // Dibujar humo (círculos más suaves)
+        cr.set_source_rgba(0.7, 0.7, 0.7, 0.6); // Humo semi-transparente
+
+        // Humo de la torre izquierda
+        cr.arc(x - self.size / 3.0, y - self.size / 3.0, tower_radius * 1.2, 0.0, 2.0 * std::f64::consts::PI);
+        cr.fill().unwrap();
+
+        // Humo de la torre derecha
+        cr.arc(x + self.size / 3.0, y - self.size / 3.0, tower_radius * 1.2, 0.0, 2.0 * std::f64::consts::PI);
+        cr.fill().unwrap();
+
+        // Etiqueta de texto "NUCLEAR"
+        cr.set_source_rgb(1.0, 1.0, 1.0); // Texto blanco
+        cr.select_font_face("Sans", cairo::FontSlant::Normal, cairo::FontWeight::Bold);
+        cr.set_font_size(14.0);
+
+        let text = "NUCLEAR";
+        let text_extents = cr.text_extents(text).unwrap();
+        let text_x = x - text_extents.width() / 2.0 - text_extents.x_bearing();
+        let text_y = y + self.size / 2.0 + 20.0;
+
+        cr.move_to(text_x, text_y);
+        cr.show_text(text).unwrap();
+    }
+}
 
 pub fn create_simulation() -> Rc<RefCell<Simulation>> {
     let city = City::new(GRID);
@@ -65,6 +200,20 @@ pub fn generate_grid(app: &Application, simulation: &Rc<RefCell<Simulation>>) {
 
     // Clone simulation for the draw callback
     let simulation_draw = simulation.clone();
+    // Crear barcos decorativos que navegan por el margen
+    // Crear barcos decorativos que navegan por el margen con diferentes offsets
+    let decorative_boats = Rc::new(RefCell::new(vec![
+        DecorativeBoat::new(0.0, 0.0005, true, 90.0),
+        DecorativeBoat::new(0.25, 0.001, false, 70.0),
+        DecorativeBoat::new(0.5, 0.0003, true, 100.0),
+        DecorativeBoat::new(0.75, 0.001, false, 125.0)
+    ]));
+    let decorative_boats_clone = decorative_boats.clone();
+    // Crear planta nuclear
+    let nuclear_plant = Rc::new(NuclearPlant::new(
+        (WIDTH as f64 / 3.075, HEIGHT as f64 / 3.075), // Centro del canvas
+        80.0
+    ));
     drawing_area.set_draw_func(move |_, cr, _width, _height| {
         // Clear background
         cr.set_source_rgb(BG.0, BG.1, BG.2);
@@ -84,7 +233,8 @@ pub fn generate_grid(app: &Application, simulation: &Rc<RefCell<Simulation>>) {
             cr.line_to(x2, y2);
             cr.stroke().unwrap();
         }
-
+        // Dibujar planta nuclear (en el fondo)
+        nuclear_plant.draw(&cr);
         // Draw vehicles
         for vehicle in &simulation_draw.borrow().active_vehicles {
             let color = match vehicle.vehicle_type {
@@ -125,11 +275,33 @@ pub fn generate_grid(app: &Application, simulation: &Rc<RefCell<Simulation>>) {
             cr.move_to(text_x, text_y);
             cr.show_text(&lane_text).unwrap();
         }
-    }); // Note: removed Inhibit completely for draw function
+        // Dibujar barcos decorativos
+        let boats = decorative_boats.borrow();
+
+        cr.set_source_rgb(BOAT_COLOR.0, BOAT_COLOR.1, BOAT_COLOR.2);
+        for boat in boats.iter() {
+            let (x, y) = boat.position();
+
+            // Dibujar barco más elaborado
+            let boat_size = LINE_WIDTH * 1.2;
+            cr.move_to(x, y);
+            cr.line_to(x, y - boat_size);
+            cr.stroke().unwrap();
+        }
+    });
 
     spawn_vehicle(simulation.clone());
     update(simulation.clone(), drawing_area.clone(), info_label.clone());
     traffic_officer(simulation.clone());
+    // Actualizar barcos decorativos
+    let drawing_area_clone = drawing_area.clone();
+    glib::timeout_add_local(Duration::from_millis(50), move || {
+        for boat in decorative_boats_clone.borrow_mut().iter_mut() {
+            boat.update();
+        }
+        drawing_area_clone.queue_draw();
+        glib::ControlFlow::Continue
+    });
 
     window.present();
 }

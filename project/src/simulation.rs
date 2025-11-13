@@ -8,14 +8,22 @@ pub struct Simulation {
     pub city: City,
     pub active_vehicles: VecDeque<Vehicle>,
     pub vehicles_queue: VecDeque<Vehicle>,
+    pub nuclear_plant_streets: Vec<StreetId>
 }
 
 impl Simulation {
     pub fn new(city: City) -> Self {
+        let nuclear_plant_streets = vec![
+            StreetId::Horizontal { row: 1, column: 1 },
+            StreetId::Vertical { row: 1, column: 1 },
+            StreetId::Horizontal { row: 2, column: 1 },
+            StreetId::Vertical { row: 1, column: 2 },
+        ];
         Self {
             city,
             active_vehicles: VecDeque::new(),
             vehicles_queue: VecDeque::new(),
+            nuclear_plant_streets
         }
     }
 
@@ -52,15 +60,18 @@ impl Simulation {
 
     pub fn generate_vehicle(&mut self) {
         let lane = rand::rng().random_range(0 ..= 1);
+        let route = self.generate_route();
         let vehicle_type_lottery = rand::rng().random_range(1 ..= 100);
-        let vehicle_type = if vehicle_type_lottery <= 50 {
-            VehicleType::Car
-        } else if vehicle_type_lottery <= 80 {
+
+        let vehicle_type = if self.nuclear_plant_streets.contains(route.back().unwrap()) {
             VehicleType::Truck
+        } else if vehicle_type_lottery <= 65 {
+            VehicleType::Car
         } else {
             VehicleType::Ambulance
         };
-        self.queue_vehicle(Vehicle::new(vehicle_type, self.generate_route(), lane));
+
+        self.queue_vehicle(Vehicle::new(vehicle_type, route, lane));
     }
 
     pub fn spawn_vehicle(&mut self) {
