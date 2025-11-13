@@ -1,14 +1,12 @@
-// grid_generator.rs
 use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, DrawingArea, Label, Box as GtkBox, Orientation};
+use gtk::{Application, ApplicationWindow, DrawingArea, Label, Box as GtkBox, Orientation, EventControllerKey};
 use cairo::Context;
 use std::rc::Rc;
-use std::cell::{Cell, Ref, RefCell};
+use std::cell::RefCell;
 use std::time::Duration;
-use context::Transfer;
+
 use crate::city::{City, StreetId};
 use crate::architect::CityLayout;
-use crate::mypthreads::MyPthreads;
 use crate::vehicle::{Vehicle, VehicleType};
 use crate::simulation::Simulation;
 
@@ -28,56 +26,10 @@ const CAR_COLOR: (f64, f64, f64) = (0.0, 0.7, 0.0);
 const AMBULANCE_COLOR: (f64, f64, f64) = (1.0, 0.0, 0.0);
 const TRUCK_COLOR: (f64, f64, f64) = (1.0, 1.0, 0.0);
 
-// Función pública que solo crea la simulación sin la UI
-pub fn create_simulation() -> Rc<RefCell<Simulation>> {
-    let city = City::new(GRID);
-    Rc::new(RefCell::new(Simulation::new(city)))
-}
-
-// Función pública para obtener estadísticas
-pub fn get_simulation_stats(simulation: &Rc<RefCell<Simulation>>) -> (usize, usize) {
-    let sim = simulation.borrow();
-    (sim.get_active_vehicle_count(), sim.get_queued_count())
-}
-
-// Función pública para actualizar la simulación
-pub fn update_simulation(simulation: &Rc<RefCell<Simulation>>, mut t: Transfer,
-                         simulation_anim: Rc<RefCell<Simulation>>,
-                         drawing_area_anim: DrawingArea,
-                         info_label_anim: Label) {
-    simulation.borrow_mut().update();
-    glib::timeout_add_local(Duration::from_millis(250), move || {
-
-        // Update info label
-        let (active_count, queued_count) = get_simulation_stats(&simulation_anim);
-        info_label_anim.set_text(&format!(
-            "Active vehicles: {} | Queued vehicles: {}",
-            active_count, queued_count
-        ));
-
-        // Request redraw
-        drawing_area_anim.queue_draw();
-
-
-
-        glib::ControlFlow::Continue
-
-    });
-
-    unsafe {
-        t.context.resume(0);
-    }
-}
-
-// Función pública para agregar vehículos
-pub fn add_vehicle(simulation: &Rc<RefCell<Simulation>>) {
-    simulation.borrow_mut().spawn_vehicle();
-}
-
-// Mantenemos generate_grid para la UI
-pub fn generate_grid(app: &Application, simulation: &Rc<RefCell<Simulation>>, mut t: Transfer) -> Transfer {
+pub fn generate_grid(app: &Application) {
     // Create the city and simulation
-    //let simulation = create_simulation();
+    let city = City::new(GRID);
+    let simulation = Rc::new(RefCell::new(Simulation::new(city)));
 
     // Create the main window
     let window = ApplicationWindow::builder()
@@ -149,43 +101,58 @@ pub fn generate_grid(app: &Application, simulation: &Rc<RefCell<Simulation>>, mu
                 vehicle_size
             );
             cr.fill().unwrap();
+
+            // === Dibujar el número de lane encima ===
+            cr.set_source_rgb(0.0, 0.0, 0.0); // texto negro
+            cr.select_font_face("Sans", cairo::FontSlant::Normal, cairo::FontWeight::Bold);
+            cr.set_font_size(12.0);
+
+            let lane_text = format!("{}", vehicle.lane);
+            let text_extents = cr.text_extents(&lane_text).unwrap();
+            let text_x = vehicle_x - text_extents.width() / 2.0 - text_extents.x_bearing();
+            let text_y = vehicle_y - vehicle_size / 2.0 + 12.0; // un poco arriba del auto
+
+            cr.move_to(text_x, text_y);
+            cr.show_text(&lane_text).unwrap();
         }
+    }); // Note: removed Inhibit completely for draw function
+
+    spawn_vehicle(simulation.clone());
+    update(simulation.clone(), drawing_area.clone(), info_label.clone());
+    traffic_officer(simulation.clone());
+
+    window.present();
+}
+
+pub fn spawn_vehicle(simulation: Rc<RefCell<Simulation>>) {
+    glib::timeout_add_local(Duration::from_millis(250), move || {
+        simulation.borrow_mut().spawn_vehicle();
+        glib::ControlFlow::Continue
     });
+}
 
-    // Set up animation loop
-    let simulation_anim = simulation.clone();
-    let drawing_area_anim = drawing_area.clone();
-    let info_label_anim = info_label.clone();
-
-
-    update_simulation(&simulation_anim, t, simulation.clone(), drawing_area_anim, info_label_anim);
-
-    /*glib::timeout_add_local(Duration::from_millis(250), move || {
-        // Generar un nuevo vehículo en cada actualización
-
-
-        // Actualizar la simulación (mover vehículos existentes)
-        t = update_simulation(&simulation_anim, t);
+pub fn update(simulation: Rc<RefCell<Simulation>>, drawing_area: DrawingArea, info_label: Label) {
+    glib::timeout_add_local(Duration::from_millis(125), move || {
+        simulation.borrow_mut().update();
 
         // Update info label
-        let (active_count, queued_count) = get_simulation_stats(&simulation_anim);
-        info_label_anim.set_text(&format!(
+        let active_count = simulation.borrow().get_active_vehicle_count();
+        let queued_count = simulation.borrow().get_queued_count();
+        info_label.set_text(&format!(
             "Active vehicles: {} | Queued vehicles: {}",
             active_count, queued_count
         ));
 
         // Request redraw
-        drawing_area_anim.queue_draw();
-
-
+        drawing_area.queue_draw();
 
         glib::ControlFlow::Continue
+    });
+}
 
-    });*/
-
-
-
-    window.present();
-    
-    return t;
+pub fn traffic_officer(simulation: Rc<RefCell<Simulation>>) {
+    glib::timeout_add_local(Duration::from_millis(2500), move || {
+        simulation.borrow_mut().clear_active_vehicles();
+        glib::ControlFlow::Continue
+    });
 }
