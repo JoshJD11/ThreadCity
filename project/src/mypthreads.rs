@@ -9,11 +9,13 @@ use std::sync::Mutex;
 use crate::mymutex::MyMutex;
 use context::Transfer;
 use std::sync::OnceLock;
+use crate::timer;
 
 
 static MASTER: OnceLock<Mutex<MasterOfPuppets>> = OnceLock::new();
 
 pub fn run_master() {
+    timer::start_timer();
     if let Some(master_mutex) = MASTER.get() {
         let mut master = master_mutex.lock().unwrap();
         master.run(); 
@@ -54,7 +56,7 @@ impl MyPthreads {
     }
 
     pub fn my_thread_yield(t: Transfer, args: usize) -> Transfer { 
-        println!("Yielding...");
+        // println!("Yielding...");
         let back = unsafe { t.context.resume(args) };
         return back;
     }
@@ -70,9 +72,10 @@ impl MyPthreads {
         println!("scheduler changed");
     }
 
-    // pub fn my_thread_end(&mut self) {
-        
-    // }
+    pub fn my_thread_end(&mut self) {
+        let master = MASTER.get().unwrap();
+        master.lock().unwrap().end_thread(self.thread_id, self.thread_sched_actual_type);
+    }
 
     pub fn my_mutex_init(&mut self) {
         self.mutex = MyMutex::new();

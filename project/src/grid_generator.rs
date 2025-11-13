@@ -127,7 +127,7 @@ pub fn generate_grid(app: &Application, simulation: &Rc<RefCell<Simulation>>) {
         }
     }); // Note: removed Inhibit completely for draw function
 
-    //spawn_vehicle(simulation.clone());
+    spawn_vehicle(simulation.clone());
     update(simulation.clone(), drawing_area.clone(), info_label.clone());
     traffic_officer(simulation.clone());
 

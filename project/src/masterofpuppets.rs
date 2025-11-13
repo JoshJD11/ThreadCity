@@ -114,6 +114,17 @@ impl MasterOfPuppets {
         }
     }
 
+    pub fn end_thread(&mut self, id: usize, sched_type: SchedulingAlgorithm) {
+        let thread_opt: Option<Box<MyThread>> = match sched_type {
+            SchedulingAlgorithm::Lottery => self.ticket_scheduler.pop_by_id(id),
+            SchedulingAlgorithm::RealTime => self.real_time_scheduler.pop_by_id(id),
+            SchedulingAlgorithm::RoundRobin => self.round_robin_scheduler.pop_by_id(id),
+        };
+
+        if thread_opt.is_none() {
+            println!("Thread with id {} not found in {:?} scheduler for ending", id, sched_type);
+        }
+    }
 
 }
 
