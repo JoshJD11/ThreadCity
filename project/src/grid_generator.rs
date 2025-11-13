@@ -26,10 +26,20 @@ const CAR_COLOR: (f64, f64, f64) = (0.0, 0.7, 0.0);
 const AMBULANCE_COLOR: (f64, f64, f64) = (1.0, 0.0, 0.0);
 const TRUCK_COLOR: (f64, f64, f64) = (1.0, 1.0, 0.0);
 
-pub fn generate_grid(app: &Application) {
+
+pub fn create_simulation() -> Rc<RefCell<Simulation>> {
+    let city = City::new(GRID);
+    Rc::new(RefCell::new(Simulation::new(city)))
+}
+
+pub fn add_vehicle(simulation: &Rc<RefCell<Simulation>>) {
+    simulation.borrow_mut().spawn_vehicle();
+}
+
+pub fn generate_grid(app: &Application, simulation: &Rc<RefCell<Simulation>>) {
     // Create the city and simulation
     let city = City::new(GRID);
-    let simulation = Rc::new(RefCell::new(Simulation::new(city)));
+    //let simulation = Rc::new(RefCell::new(Simulation::new(city)));
 
     // Create the main window
     let window = ApplicationWindow::builder()
@@ -117,7 +127,7 @@ pub fn generate_grid(app: &Application) {
         }
     }); // Note: removed Inhibit completely for draw function
 
-    spawn_vehicle(simulation.clone());
+    //spawn_vehicle(simulation.clone());
     update(simulation.clone(), drawing_area.clone(), info_label.clone());
     traffic_officer(simulation.clone());
 
