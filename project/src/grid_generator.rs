@@ -210,8 +210,12 @@ pub fn generate_grid(app: &Application, simulation: &Rc<RefCell<Simulation>>) {
     ]));
     let decorative_boats_clone = decorative_boats.clone();
     // Crear planta nuclear
-    let nuclear_plant = Rc::new(NuclearPlant::new(
+    let nuclear_plant_1 = Rc::new(NuclearPlant::new(
         (WIDTH as f64 / 3.075, HEIGHT as f64 / 3.075), // Centro del canvas
+        80.0
+    ));
+    let nuclear_plant_2 = Rc::new(NuclearPlant::new(
+        (WIDTH as f64 / 1.484, HEIGHT as f64 / 1.484), // Centro del canvas
         80.0
     ));
     drawing_area.set_draw_func(move |_, cr, _width, _height| {
@@ -234,7 +238,8 @@ pub fn generate_grid(app: &Application, simulation: &Rc<RefCell<Simulation>>) {
             cr.stroke().unwrap();
         }
         // Dibujar planta nuclear (en el fondo)
-        nuclear_plant.draw(&cr);
+        nuclear_plant_1.draw(&cr);
+        nuclear_plant_2.draw(&cr);
         // Draw vehicles
         for vehicle in &simulation_draw.borrow().active_vehicles {
             let color = match vehicle.vehicle_type {

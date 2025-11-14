@@ -18,6 +18,10 @@ impl Simulation {
             StreetId::Vertical { row: 1, column: 1 },
             StreetId::Horizontal { row: 2, column: 1 },
             StreetId::Vertical { row: 1, column: 2 },
+            StreetId::Horizontal { row: 4, column: 4 },
+            StreetId::Vertical { row: 4, column: 4 },
+            StreetId::Horizontal { row: 5, column: 4 },
+            StreetId::Vertical { row: 4, column: 5 }
         ];
         Self {
             city,
